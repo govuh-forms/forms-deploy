@@ -67,3 +67,30 @@ module "pentester_role" {
   ]
   ip_restrictions = var.pentester_cidrs
 }
+
+# The support role is already at the default quota of 10 managed policies per
+# role, so the `aws login` permissions are granted as an inline policy. These
+# match the AWS managed policy SignInLocalDevelopmentAccess.
+resource "aws_iam_role_policy" "aws_cli_login" {
+  for_each = merge(
+    { for user, role in module.support_role : "${user}-support" => role.role_name },
+    { for user, role in module.readonly_role : "${user}-readonly" => role.role_name },
+  )
+
+  name = "allow-aws-cli-login"
+  role = each.value
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "signin:AuthorizeOAuth2Access",
+          "signin:CreateOAuth2Token",
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:signin:*:*:oauth2/public-client/*"
+      }
+    ]
+  })
+}
