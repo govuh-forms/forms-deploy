@@ -33,6 +33,7 @@ module "support_role" {
     var.allow_ecs_task_usage ? [aws_iam_policy.manage_ecs_task[0].arn] : [],
     aws_iam_policy.get_ux_customisation.arn,
     aws_iam_policy.get_usage_data.arn,
+    aws_iam_policy.aws_cli_login.arn,
   ])
   ip_restrictions = local.vpn_ip_restrictions
 }
@@ -48,6 +49,7 @@ module "readonly_role" {
     aws_iam_policy.lock_state_files.arn,
     aws_iam_policy.get_ux_customisation.arn,
     aws_iam_policy.get_usage_data.arn,
+    aws_iam_policy.aws_cli_login.arn,
   ]
   ip_restrictions = local.vpn_ip_restrictions
 }
@@ -66,32 +68,4 @@ module "pentester_role" {
     aws_iam_policy.get_ux_customisation.arn,
   ]
   ip_restrictions = var.pentester_cidrs
-}
-
-# The support role is already at the default quota of 10 managed policies per
-# role, so the `aws login` permissions are granted as an inline policy. These
-# match the AWS managed policy SignInLocalDevelopmentAccess, but only allow
-# same-device login (not `aws login --remote`).
-resource "aws_iam_role_policy" "aws_cli_login" {
-  for_each = merge(
-    { for user, role in module.support_role : "${user}-support" => role.role_name },
-    { for user, role in module.readonly_role : "${user}-readonly" => role.role_name },
-  )
-
-  name = "allow-aws-cli-login"
-  role = each.value
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "signin:AuthorizeOAuth2Access",
-          "signin:CreateOAuth2Token",
-        ]
-        Effect   = "Allow"
-        Resource = "arn:aws:signin:*:*:oauth2/public-client/localhost"
-      }
-    ]
-  })
 }
