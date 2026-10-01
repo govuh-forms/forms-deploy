@@ -70,7 +70,8 @@ module "pentester_role" {
 
 # The support role is already at the default quota of 10 managed policies per
 # role, so the `aws login` permissions are granted as an inline policy. These
-# match the AWS managed policy SignInLocalDevelopmentAccess.
+# match the AWS managed policy SignInLocalDevelopmentAccess, but only allow
+# same-device login (not `aws login --remote`).
 resource "aws_iam_role_policy" "aws_cli_login" {
   for_each = merge(
     { for user, role in module.support_role : "${user}-support" => role.role_name },
@@ -89,7 +90,7 @@ resource "aws_iam_role_policy" "aws_cli_login" {
           "signin:CreateOAuth2Token",
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:signin:*:*:oauth2/public-client/*"
+        Resource = "arn:aws:signin:*:*:oauth2/public-client/localhost"
       }
     ]
   })
