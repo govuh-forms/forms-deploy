@@ -1,0 +1,53 @@
+From a14de6149b9d43d1b575056dd9c822696c2f52b2 Mon Sep 17 00:00:00 2001
+From: "GOV.UH Engineering" <engineering@gov.uhrblx.com>
+Date: Thu, 8 Oct 2026 22:53:51 +0000
+Subject: [PATCH] Align standard GOV.UH government identity and Forms service
+ name in native header slots
+
+---
+ .../styles/_uh_government_identity.scss       | 22 ++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/app/frontend/styles/_uh_government_identity.scss b/app/frontend/styles/_uh_government_identity.scss
+index 29499bf..ad249d2 100644
+--- a/app/frontend/styles/_uh_government_identity.scss
++++ b/app/frontend/styles/_uh_government_identity.scss
+@@ -16,19 +16,31 @@
+   mask: none;
+ }
+ 
++// GOV.UK Frontend nests the government identity logo and product name in a
++// single homepage link. Use one aligned row, not glyph spaces or margin guesses.
++.govuk-header .govuk-header__logo .govuk-header__homepage-link {
++  display: inline-flex;
++  align-items: center;
++  column-gap: 24px;
++  flex-wrap: wrap;
++}
++
+ .govuh-shared-logo {
+-  display: inline-block;
++  display: block;
++  flex: none;
+   width: 162px;
+   height: 30px;
+-  vertical-align: middle;
+   filter: brightness(0) invert(1);
+ }
+ 
+-.govuk-header__product-name {
+-  margin-left: 24px;
++.govuk-header .govuk-header__product-name {
++  display: inline-flex;
++  align-items: center;
++  margin: 0;
++  line-height: 30px;
+ }
+ 
+ @media (max-width: 40.0525em) {
++  .govuk-header .govuk-header__logo .govuk-header__homepage-link { column-gap: 16px; }
+   .govuh-shared-logo { width: 144px; height: auto; }
+-  .govuk-header__product-name { margin-left: 12px; }
+ }
+-- 
+2.53.0
