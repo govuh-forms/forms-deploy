@@ -1,0 +1,94 @@
+From e6c00e97cdb0fe80826ff4318b1e1b8ecc545bb7 Mon Sep 17 00:00:00 2001
+From: "GOV.UH Engineering" <engineering@gov.uhrblx.com>
+Date: Thu, 8 Oct 2026 19:09:04 +0000
+Subject: [PATCH 5/5] Use central GOV.UH government artwork and correct Forms
+ management navigation
+
+---
+ app/components/header_component/view.rb       |  2 +-
+ app/frontend/entrypoints/application.scss     |  1 +
+ .../styles/_uh_government_identity.scss       | 34 +++++++++++++++++++
+ app/views/layouts/application.html.erb        |  2 +-
+ 4 files changed, 37 insertions(+), 2 deletions(-)
+ create mode 100644 app/frontend/styles/_uh_government_identity.scss
+
+diff --git a/app/components/header_component/view.rb b/app/components/header_component/view.rb
+index cd70794..e2ddd01 100644
+--- a/app/components/header_component/view.rb
++++ b/app/components/header_component/view.rb
+@@ -9,7 +9,7 @@ module HeaderComponent
+ 
+     def call
+       govuk_header(homepage_url:, classes: "govuk-header--full-width-border") do |header|
+-        header.with_custom_logo { render "shared/gov_uh_logo" }
++        header.with_custom_logo { helpers.image_tag("https://www.gov.uhrblx.com/uh-brand/gov-uh-site-identity-logo.svg", alt: "GOV.UH", width: 162, height: 30, class: "govuh-shared-logo") }
+         header.with_product_name(name: "Forms")
+       end
+     end
+diff --git a/app/frontend/entrypoints/application.scss b/app/frontend/entrypoints/application.scss
+index a9fb2ed..cf163bf 100644
+--- a/app/frontend/entrypoints/application.scss
++++ b/app/frontend/entrypoints/application.scss
+@@ -15,6 +15,7 @@
+ @use "../styles/responsive-embed";
+ @use "../styles/sub-navigation";
+ @use "../styles/code-samples";
++@use "../styles/uh_government_identity";
+ 
+ @media (min-width: 415px) {
+   div.feature-row {
+diff --git a/app/frontend/styles/_uh_government_identity.scss b/app/frontend/styles/_uh_government_identity.scss
+new file mode 100644
+index 0000000..29499bf
+--- /dev/null
++++ b/app/frontend/styles/_uh_government_identity.scss
+@@ -0,0 +1,34 @@
++// Native GOV.UK Frontend institutional brand override for GOV.UH.
++ // Full UH government arms remain in the centrally administered GOV.UH brand estate.
++ // GOV.UK Frontend places UK Royal Arms on a masked ::before pseudo-element.
++.govuk-footer .govuk-footer__copyright-logo::before {
++  display: block;
++  width: 140px;
++  height: 140px;
++  padding-top: 0;
++  margin-inline: auto;
++  background-color: transparent;
++  background-image: url("https://www.gov.uhrblx.com/uh-brand/uh-government-coat-of-arms.webp");
++  background-repeat: no-repeat;
++  background-position: center center;
++  background-size: contain;
++  -webkit-mask: none;
++  mask: none;
++}
++
++.govuh-shared-logo {
++  display: inline-block;
++  width: 162px;
++  height: 30px;
++  vertical-align: middle;
++  filter: brightness(0) invert(1);
++}
++
++.govuk-header__product-name {
++  margin-left: 24px;
++}
++
++@media (max-width: 40.0525em) {
++  .govuh-shared-logo { width: 144px; height: auto; }
++  .govuk-header__product-name { margin-left: 12px; }
++}
+diff --git a/app/views/layouts/application.html.erb b/app/views/layouts/application.html.erb
+index e6413a1..96f9e4a 100644
+--- a/app/views/layouts/application.html.erb
++++ b/app/views/layouts/application.html.erb
+@@ -13,7 +13,7 @@
+       {text: "About", href: about_path, active_when: about_path},
+       {text: "Support", href: support_path},
+     ],
+-    featured_link: {text: "Sign in", href: Settings.forms_admin.base_url}
++    featured_link: {text: "Manage forms", href: Settings.forms_admin.base_url}
+   )) %>
+ <% end %>
+ 
+-- 
+2.53.0

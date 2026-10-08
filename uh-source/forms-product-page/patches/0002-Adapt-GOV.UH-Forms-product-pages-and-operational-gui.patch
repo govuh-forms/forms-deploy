@@ -1,0 +1,2119 @@
+From 7f55e9cb1446ce4b2e5983700bcc50ee921ffe15 Mon Sep 17 00:00:00 2001
+From: root <root@vps-0c7c0252.vps.ovh.net>
+Date: Wed, 7 Oct 2026 12:04:24 +0000
+Subject: [PATCH 2/5] Adapt GOV.UH Forms product pages and operational guidance
+
+---
+ app/controllers/support_controller.rb         |  49 +--
+ app/frontend/entrypoints/application.js       |  62 ----
+ app/views/application/_cookie_banner.html.erb |  21 --
+ app/views/json_submissions/schema_v1.json.erb |   4 +-
+ app/views/layouts/application.html.erb        |  19 +-
+ app/views/pages/_terms_of_use.html.erb        | 127 +-------
+ app/views/pages/about.html.markerb            |  31 +-
+ app/views/pages/accessibility.html.md         |  58 +---
+ app/views/pages/cookies.erb                   | 284 +-----------------
+ app/views/pages/create_good_forms.html.md     |  53 +---
+ .../data_protection_security.html.markerb     | 171 +----------
+ app/views/pages/features.html.markerb         | 143 +--------
+ .../pages/forthcoming_features.html.markerb   |  41 +--
+ app/views/pages/get_started.html.markerb      |  47 +--
+ app/views/pages/index.html.erb                | 196 +++---------
+ app/views/pages/privacy.html.md               | 158 ++--------
+ ...cessing_completed_form_submissions.html.md |  65 +---
+ app/views/pages/using_routes.html.markerb     |  65 +---
+ app/views/performance/index.html.erb          |   7 +-
+ app/views/support/support.html.erb            |  49 +--
+ config/initializers/govuh_footer.rb           |   4 -
+ config/locales/en.yml                         |  28 +-
+ config/locales/support.yml                    |  12 +-
+ config/performance_metrics.yml                |   5 +-
+ config/routes.rb                              |   7 -
+ config/settings.yml                           |   2 +-
+ config/settings/production.yml                |   2 +
+ 27 files changed, 233 insertions(+), 1477 deletions(-)
+ delete mode 100644 config/initializers/govuh_footer.rb
+
+diff --git a/app/controllers/support_controller.rb b/app/controllers/support_controller.rb
+index 5ecb945..2194727 100644
+--- a/app/controllers/support_controller.rb
++++ b/app/controllers/support_controller.rb
+@@ -1,50 +1,3 @@
+ class SupportController < ApplicationController
+-  def support
+-    @support_form = SupportForm.new
+-  end
+-
+-  def new
+-    @support_form = SupportForm.new(support_form_params)
+-
+-    if @support_form.invalid?
+-      render :support and return
+-    end
+-
+-    case @support_form.i_need_help_with.to_sym
+-    when :using_forms
+-      redirect_to :help_using_forms
+-    when :about_forms
+-      redirect_to :question_about_forms
+-    when :other_government_service
+-      redirect_to "https://www.gov.uk/contact", status: :see_other, allow_other_host: true
+-    end
+-  end
+-
+-  def help_using_forms
+-    @support_form = SupportForm.new(i_need_help_with: :using_forms)
+-    render :form
+-  end
+-
+-  def question_about_forms
+-    @support_form = SupportForm.new(i_need_help_with: :about_forms)
+-    render :form
+-  end
+-
+-  def submit
+-    @support_form = SupportForm.new(support_form_params)
+-
+-    if @support_form.submit
+-      render :confirmation
+-    else
+-      render :form
+-    end
+-  end
+-
+-private
+-
+-  def support_form_params
+-    params
+-      .require(:support_form)
+-      .permit(:i_need_help_with, :message, :question, :name, :email_address)
+-  end
++  def support; end
+ end
+diff --git a/app/frontend/entrypoints/application.js b/app/frontend/entrypoints/application.js
+index 77cfefa..ec6f1eb 100644
+--- a/app/frontend/entrypoints/application.js
++++ b/app/frontend/entrypoints/application.js
+@@ -1,65 +1,3 @@
+ import { initAll } from 'govuk-frontend'
+ 
+-import { CookieBanner } from '../javascript/components/cookie_banner.mjs'
+-import { CookiePage } from '../javascript/components/cookie_page.mjs'
+-
+-import {
+-  loadConsentStatus,
+-  saveConsentStatus,
+-  CONSENT_STATUS
+-} from '../javascript/services/cookie.mjs'
+-import {
+-  installAnalyticsScript,
+-  deleteGoogleAnalyticsCookies,
+-  setDefaultConsent,
+-  updateCookieConsent,
+-  sendPageViewEvent,
+-  attachExternaLinkTracker
+-} from '../javascript/services/google_tag.mjs'
+-
+ initAll()
+-
+-const analyticsConsentStatus = loadConsentStatus()
+-
+-setDefaultConsent(analyticsConsentStatus === CONSENT_STATUS.GRANTED)
+-
+-// send pageview regardless of consent value - if consent has not been granted
+-// yet, GTM won't be loaded and no data is sent to Google analytics. Doing this
+-// now means that if consent is granted later on this page, the event will be
+-// sent
+-sendPageViewEvent()
+-attachExternaLinkTracker()
+-
+-if (analyticsConsentStatus === CONSENT_STATUS.GRANTED) {
+-  installAnalyticsScript(window)
+-}
+-
+-// Initialise cookie banner
+-const $banners = document.querySelectorAll('[data-module="cookie-banner"]')
+-$banners.forEach(function ($banner) {
+-  new CookieBanner($banner).init({
+-    showBanner: analyticsConsentStatus === CONSENT_STATUS.UNKNOWN,
+-    onSubmit: handleUpdateConsent
+-  })
+-})
+-
+-// Initialise cookie page
+-const $cookiesPage = document.querySelector('[data-module="app-cookies-page"]')
+-if ($cookiesPage) {
+-  new CookiePage($cookiesPage).init({
+-    allowAnalyticsCookies: analyticsConsentStatus === CONSENT_STATUS.GRANTED,
+-    onSubmit: handleUpdateConsent
+-  })
+-}
+-
+-function handleUpdateConsent (consentedToAnalyticsCookies) {
+-  saveConsentStatus(consentedToAnalyticsCookies)
+-
+-  updateCookieConsent(consentedToAnalyticsCookies)
+-
+-  if (consentedToAnalyticsCookies === false) {
+-    deleteGoogleAnalyticsCookies()
+-  } else {
+-    installAnalyticsScript(window)
+-  }
+-}
+diff --git a/app/views/application/_cookie_banner.html.erb b/app/views/application/_cookie_banner.html.erb
+index a807719..e69de29 100644
+--- a/app/views/application/_cookie_banner.html.erb
++++ b/app/views/application/_cookie_banner.html.erb
+@@ -1,21 +0,0 @@
+-<div id="cookie-banner" class="govuk-cookie-banner" hidden="true" data-nosnippet role="region" aria-label="Cookies on GOV.UK Forms" data-module="cookie-banner">
+-  <div class="govuk-cookie-banner__message govuk-width-container">
+-    <div class="govuk-grid-row">
+-      <div class="govuk-grid-column-two-thirds">
+-        <h2 class="govuk-cookie-banner__heading govuk-heading-m">Cookies on GOV.UK Forms</h2>
+-        <div class="govuk-cookie-banner__content">
+-          <p class="govuk-body">We’d like to use analytics cookies so we can understand how you use this website and make improvements.</p>
+-        </div>
+-      </div>
+-    </div>
+-    <div class="govuk-button-group">
+-      <button type="button" class="govuk-button" data-module="govuk-button" data-function="accept-cookies">
+-        Accept analytics cookies
+-      </button>
+-      <button type="button" class="govuk-button" data-module="govuk-button" data-function="reject-cookies">
+-        Reject analytics cookies
+-      </button>
+-      <%= link_to 'How we use cookies', '/cookies', class: 'govuk-link' %>
+-    </div>
+-  </div>
+-</div>
+diff --git a/app/views/json_submissions/schema_v1.json.erb b/app/views/json_submissions/schema_v1.json.erb
+index 53ad382..1e2af6a 100644
+--- a/app/views/json_submissions/schema_v1.json.erb
++++ b/app/views/json_submissions/schema_v1.json.erb
+@@ -1,14 +1,14 @@
+ {
+   "$schema": "https://json-schema.org/draft/2020-12/schema",
+   "$id": "<%= json_submissions_schema_v1_url %>",
+-  "title": "GOV.UK Forms form submission - version 1",
++  "title": "GOV.UH Forms form submission - version 1",
+   "type": "object",
+   "properties": {
+     "form_name": {
+       "type": "string"
+     },
+     "submission_reference": {
+-      "description": "A reference number generated by GOV.UK Forms for each submission.",
++      "description": "A reference number generated by GOV.UH Forms for each submission.",
+       "type": "string"
+     },
+     "submitted_at": {
+diff --git a/app/views/layouts/application.html.erb b/app/views/layouts/application.html.erb
+index f0fc64f..e6413a1 100644
+--- a/app/views/layouts/application.html.erb
++++ b/app/views/layouts/application.html.erb
+@@ -1,9 +1,5 @@
+ <% content_for :body_start do %>
+-  <% if content_for?(:cookie_banner) %>
+-    <%= yield :cookie_banner %>
+-  <% else %>
+-    <%= render partial: "application/cookie_banner" %>
+-  <% end %>
++  <%= yield :cookie_banner if content_for?(:cookie_banner) %>
+ <% end %>
+ 
+ <% content_for :header do %>
+@@ -36,7 +32,18 @@
+ <% end %>
+ 
+ <% content_for :footer do %>
+-  <%= govuk_footer meta_items_title: t("footer.meta_items_title"), meta_items: do |footer| %>
++  <%= govuk_footer(
++        meta_items_title: t("footer.meta_items_title"),
++        meta_items:,
++        meta_licence: safe_join([
++          "All content is available under the ",
++          link_to("Open Government Licence v3.0",
++                  "https://nationalarchives.gov.uhrblx.com/doc/open-government-licence/version/3/",
++                  class: ["govuk-footer__link"]),
++          ", except where otherwise stated"
++        ]),
++        copyright_url: "https://nationalarchives.gov.uhrblx.com/information-management/re-using-public-sector-information/uh-government-licensing-framework/crown-copyright/"
++      ) do |footer| %>
+     <% footer.with_meta_html do %>
+       <div class="govuk-footer__meta-custom">
+         Built by the
+diff --git a/app/views/pages/_terms_of_use.html.erb b/app/views/pages/_terms_of_use.html.erb
+index 3c60dcd..bcc105f 100644
+--- a/app/views/pages/_terms_of_use.html.erb
++++ b/app/views/pages/_terms_of_use.html.erb
+@@ -1,118 +1,23 @@
+-<p>
+-  <%=t("terms_of_use.summary.first_published")%>
+-  <br/>
+-  <%=t("terms_of_use.summary.last_updated")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.summary.section_1")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.summary.section_2")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.summary.section_3")%>
+-</p>
+-<h2 class="govuk-heading-m">
+-  <%=t("terms_of_use.security.heading")%>
+-</h2>
+-<p>
+-  <%=t("terms_of_use.security.summary.section_1")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.security.summary.section_2")%>
+-</p>
++<p>First published: 7 October 2026<br>Last updated: 7 October 2026</p>
+ 
+-<h3 class="govuk-heading-s">
+-  <%=t("terms_of_use.security.accessing_the_platform.heading")%>
+-</h3>
+-<p>
+-  <%=t("terms_of_use.security.accessing_the_platform.requirements.preamble")%>
+-</p>
+-<ul class="govuk-list govuk-list--bullet">
+-  <li>
+-    <%=t("terms_of_use.security.accessing_the_platform.requirements.list_item_1")%>
+-  </li>
+-  <li>
+-    <%=t("terms_of_use.security.accessing_the_platform.requirements.list_item_2")%>
+-  </li>
+-  <li>
+-    <%=t("terms_of_use.security.accessing_the_platform.requirements.list_item_3")%>
+-  </li>
+-</ul>
++<p>These terms apply to authorised government users of GOV.UH Forms.</p>
+ 
+-<h3 class="govuk-heading-s">
+-  <%=t("terms_of_use.security.receiving_completed_form_data.heading")%>
+-</h3>
+-<p>
+-  <%=t("terms_of_use.security.receiving_completed_form_data.section_1", securing_government_email_link: link_to(t("terms_of_use.security.receiving_completed_form_data.section_1_link_text"), "https://www.gov.uk/guidance/securing-government-email")).html_safe%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.security.receiving_completed_form_data.section_2")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.security.receiving_completed_form_data.section_3")%>
+-</p>
++<h2 class="govuk-heading-m">Use the service for authorised government work</h2>
++<p>You must use GOV.UH Forms only for a service or function your organisation is responsible for. Creating or publishing a form does not create legal authority to collect information or make decisions.</p>
+ 
+-<h3 class="govuk-heading-s">
+-  <%=t("terms_of_use.security.report_any_security_breaches.heading")%>
+-</h3>
+-<p>
+-  <%=t("terms_of_use.security.report_any_security_breaches.section_1")%>
+-</p>
++<h2 class="govuk-heading-m">Security</h2>
++<p>Use an authorised work account, a suitably managed device and a trusted connection. Follow your organisation's security requirements and report suspected compromise through its incident-management route.</p>
++<p>Do not use GOV.UH Forms to collect information that your organisation or the Forms platform is not authorised or equipped to handle.</p>
+ 
+-<h2 class="govuk-heading-m">
+-  <%=t("terms_of_use.data_protection.heading")%>
+-</h2>
+-<p>
+-  <%=t("terms_of_use.data_protection.section_1")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.data_protection.section_2")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.data_protection.section_3")%>
+-</p>
++<h2 class="govuk-heading-m">Completed form data</h2>
++<p>Before publishing, make sure completed submissions have an approved receiving route, access controls, records arrangements and any safeguarding or escalation process required by the service.</p>
++<p>Check submitted information before relying on it. A technical form check does not establish that information supplied by a user is accurate.</p>
+ 
+-<h2 class="govuk-heading-m">
+-  <%=t("terms_of_use.accessibility.heading")%>
+-</h2>
+-<p>
+-  <%=t("terms_of_use.accessibility.section_1")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.accessibility.section_2")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.accessibility.section_3", good_forms_link: link_to(t("terms_of_use.accessibility.section_3_link_text"), "https://www.forms.service.gov.uk/create-good-forms")).html_safe%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.accessibility.publishing.preamble")%>
+-</p>
+-<ul class="govuk-list govuk-list--bullet">
+-  <li>
+-    <%=t("terms_of_use.accessibility.publishing.list_item_1")%>
+-  </li>
+-  <li>
+-    <%=t("terms_of_use.accessibility.publishing.list_item_2")%>
+-  </li>
+-</ul>
++<h2 class="govuk-heading-m">Data protection</h2>
++<p>Your organisation is responsible for the information it collects through its forms. You must provide accurate privacy information and follow the applicable information-management and data-protection requirements.</p>
+ 
+-<h2 class="govuk-heading-m">
+-  <%=t("terms_of_use.service_standards.heading")%>
+-</h2>
+-<p>
+-  <%=t("terms_of_use.service_standards.section_1")%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.service_standards.section_2", service_standard_link: link_to(t("terms_of_use.service_standards.section_2_link_text"), "https://www.gov.uk/service-manual/service-assessments/check-if-need-to-meet-service-standard")).html_safe%>
+-</p>
+-<p>
+-  <%=t("terms_of_use.service_standards.section_3")%>
+-</p>
++<h2 class="govuk-heading-m">Accessibility and service quality</h2>
++<p>Use the standard Forms components correctly, write clear content and test the complete service journey before publication. The service-owning organisation remains responsible for its service assurance and the accessibility of the content it publishes.</p>
+ 
+-<h2 class="govuk-heading-m">
+-  <%=t("terms_of_use.changes.heading")%>
+-</h2>
+-<p>
+-  <%=t("terms_of_use.changes.section_1")%>
+-</p>
++<h2 class="govuk-heading-m">Changes to these terms</h2>
++<p>Government Digital Service may update these terms when the GOV.UH Forms service or its operating requirements change. The current terms are published on this page.</p>
+diff --git a/app/views/pages/about.html.markerb b/app/views/pages/about.html.markerb
+index 36246c1..dd8df6c 100644
+--- a/app/views/pages/about.html.markerb
++++ b/app/views/pages/about.html.markerb
+@@ -1,24 +1,23 @@
+-<% set_page_title('About GOV.UK Forms') %>
+-<% set_page_description('The process for creating a form.') %>
++# About GOV.UH Forms
+ 
+-# About GOV.UK Forms
++GOV.UH Forms is a common government digital product operated by the Government Digital Service.
+ 
+-GOV.UK Forms is a new platform that makes it easy to create accessible online forms for the GOV.UK website.
++It provides an editor for authorised government teams and a public runner for forms that have been reviewed and made live.
+ 
+-## Creating a form using GOV.UK Forms
++## Responsibilities
+ 
+-These are the steps to make a form with GOV.UK Forms.
++Government Digital Service is responsible for operating the common Forms product, its technical service and its product standards.
+ 
+-1. Create a form and give the form a name.
+-2. Add questions to your form to collect the information you need.
+-3. Provide privacy information, the email address you want completed forms to be sent to, and details about what will happen after a form is submitted.
+-4. Make the form live.
+-5. Publish a link to the form on GOV.UK along with any guidance people need to read before they complete the form.
+-6. By default, answers for each completed form will be sent in the body of an email - to the email address you specified. You can also get the answers in a CSV or JSON file.
++The organisation delivering the underlying public service remains responsible for:
+ 
+-## Features of GOV.UK Forms
++- the purpose and lawful authority for the service
++- eligibility and policy decisions
++- the questions and guidance in its forms
++- privacy information and information governance
++- receiving and handling completed submissions
++- records, retention, casework and safeguarding
++- reviewing the service before publication
+ 
+-Find out more about:
++## Publishing a form
+ 
+-- <%= govuk_link_to "features", features_path %> already available in the platform
+-- <%= govuk_link_to "forthcoming features", forthcoming_features_path %> that will be available in the near future
++A live form should have a GOV.UH starting point or other authorised public-service page that explains the service and links to the form. GOV.UH Forms does not replace the publishing and content responsibilities of the service-owning organisation.
+diff --git a/app/views/pages/accessibility.html.md b/app/views/pages/accessibility.html.md
+index 08721d3..a2f5319 100644
+--- a/app/views/pages/accessibility.html.md
++++ b/app/views/pages/accessibility.html.md
+@@ -1,61 +1,23 @@
+-# Accessibility statement for GOV.UK Forms
+- 
+-This accessibility statement applies to the:
++# Accessibility statement for GOV.UH Forms
+ 
+-- GOV.UK Forms website at [https://www.forms.service.gov.uk](https://www.forms.service.gov.uk)
+-- GOV.UK Forms platform at [https://admin.forms.service.gov.uk](https://admin.forms.service.gov.uk)
++This accessibility statement applies to the GOV.UH Forms product website, the Forms editor and forms published through the GOV.UH Forms Runner.
+ 
+-There's a separate accessibility statement for online forms created using the platform - that statement is linked to from individual forms.
+-
+-There's also a separate [accessibility statement for the main GOV.UK website](https://www.gov.uk/help/accessibility-statement).
+-
+-## Using the website and platform
+-
+-The website and platform are run by GDS. We want as many people as possible to be able to use them. For example, that means you should be able to:
+-
+-- change colours, contrast levels and fonts using browser or device settings
+-- zoom in up to 400% without the text spilling off the screen
+-- navigate most of the website and platform using a keyboard or speech recognition software
+-- listen to most of the website and platform using a screen reader (including the most recent versions of JAWS, NVDA and VoiceOver)
+-
+-We've also made the text as simple as possible to understand.
+-
+-[AbilityNet](https://mcmw.abilitynet.org.uk/) has advice on making your device easier to use if you have a disability.
++We want as many people as possible to be able to use these services. They use the GOV.UH adaptation of established government design components and patterns.
+ 
+ ## Feedback and contact information
+ 
+-We're always looking to improve the accessibility of the website and platform.
+-
+-If you find any problems not listed on this page, or think we're not meeting accessibility requirements, [contact us](https://www.forms.service.gov.uk/support).
+-
+-## Enforcement procedure
++If you need help using GOV.UH Forms as a government editor, use the [GOV.UH Forms support page](/support).
+ 
+-The Equality and Human Rights Commission (EHRC) is responsible for enforcing the Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018 (the 'accessibility regulations').
++If you are completing a form for a particular service, contact the organisation responsible for that service using the contact information on the form or its GOV.UH starting page.
+ 
+-If you're not happy with how we respond to your complaint, contact the [Equality Advisory and Support Service](https://www.equalityadvisoryservice.com/), which is run on behalf of EHRC.
++## Technical information
+ 
+-## Technical information about the website and platform's accessibility
+-
+-GDS is committed to making the website and platform accessible, in accordance with the Public Sector Bodies (Websites and Mobile Applications) (No. 2) Accessibility Regulations 2018.
++Government Digital Service is responsible for the accessibility of the common GOV.UH Forms product. The organisation publishing a form is responsible for the accessibility of the content it adds to that form.
+ 
+ ## Compliance status
+ 
+-### The website
+-
+-GDS tested the GOV.UK Forms website on 8 June 2022.
+-
+-This website is fully compliant with the Web Content Accessibility Guidelines (WCAG) version 2.2 AA standard.
+-
+-### The platform
+-
+-The Digital Accessibility Centre (DAC) tested the GOV.UK Forms platform on 28 March 2024.
+-
+-This website is fully compliant with the Web Content Accessibility Guidelines (WCAG) version 2.2 AA standard.
+-
+-## Preparation of this accessibility statement
+-
+-This statement was prepared on 5 June 2024. It was last reviewed and updated on 6 February 2026.
++A formal accessibility audit of the complete GOV.UH deployment has not yet been recorded. The service must not be described as fully compliant until that assessment has been completed and any identified issues have been addressed.
+ 
+-This website was last tested on 8 June 2022. The test was carried out by GDS.
++## Preparation of this statement
+ 
+-The platform was last tested on 28 March 2024. The test was carried out by the Digital Accessibility Centre (DAC).
++This statement was prepared on 7 October 2026. It should be updated when the formal accessibility assessment is completed or when a material accessibility change is made.
+diff --git a/app/views/pages/cookies.erb b/app/views/pages/cookies.erb
+index 178617a..989d917 100644
+--- a/app/views/pages/cookies.erb
++++ b/app/views/pages/cookies.erb
+@@ -1,283 +1,23 @@
+-<% set_page_title('Cookies') %>
++<% set_page_title("Cookies") %>
+ 
+-<%# Don't show the cookie banner on this page %>
+-<% content_for :cookie_banner do %>
+-  <!-- no cookie banner -->
+-<% end %>
++<h1 class="govuk-heading-xl">Cookies on GOV.UH Forms</h1>
+ 
+-<div class="app-cookies-page" data-module="app-cookies-page">
+-  <div
+-    class="govuk-notification-banner govuk-notification-banner--success js-cookies-page-success"
+-    role="alert"
+-    aria-labelledby="govuk-notification-banner-title"
+-    data-module="govuk-notification-banner"
+-    hidden=""
+-  >
+-    <div class="govuk-notification-banner__header">
+-      <h2
+-        class="govuk-notification-banner__title"
+-        id="govuk-notification-banner-title"
+-      >
+-        Success
+-      </h2>
+-    </div>
+-    <div class="govuk-notification-banner__content">
+-      <p class="govuk-notification-banner__heading">
+-        You’ve set your cookie preferences.
+-      </p>
+-    </div>
+-  </div>
+-<h1 class="govuk-heading-xl">Cookies</h1>
+-<p>
+-  Cookies are small files saved on your phone, tablet or computer when you visit
+-  a website.
++<p class="govuk-body">
++  GOV.UH Forms does not currently use optional analytics cookies on this product website.
+ </p>
+ 
+-<p>This cookies statement applies to the:</p>
+-<ul class="govuk-list govuk-list--bullet">
+-  <li>GOV.UK Forms website at <%= root_url.delete_suffix("/") %></li>
+-  <li>GOV.UK Forms platform at <%= Settings.forms_admin.base_url %></li>
+-</ul>
++<h2 class="govuk-heading-l">Essential cookies</h2>
+ 
+-<p>There’s a separate cookies statement for forms created using the platform.</p>
+-
+-<h2 class="govuk-heading-l">What we use cookies for</h2>
+-
+-<p>We use cookies on the website and platform to:</p>
+-<ul class="govuk-list govuk-list--bullet">
+-  <li>collect information about how you use the website and platform</li>
+-  <li>make the GOV.UK Forms platform work</li>
+-</ul>
+-
+-<p>
+-  Our mailing list supplier uses cookies on the sign up page for our mailing list. And our authentication
+-  supplier uses cookies to authenticate you when you sign in to the GOV.UK Forms platform.
+-</p>
+-
+-<p>Find out <a href="https://ico.org.uk/for-the-public/online/cookies">how to manage cookies</a>.</p>
+-
+-<h2 class="govuk-heading-l">Essential cookies on the GOV.UK Forms website</h2>
+-
+-<p>We use an essential cookie to remember when you accept or reject cookies on this website.</p>
+-
+-<table class="govuk-table govuk-table--small-text-until-tablet">
+-  <thead class="govuk-table__head">
+-    <tr class="govuk-table__row">
+-      <th scope="col" class="govuk-table__header">Name</th>
+-      <th scope="col" class="govuk-table__header">Purpose</th>
+-      <th scope="col" class="govuk-table__header">Expires</th>
+-    </tr>
+-  </thead>
+-  <tbody class="govuk-table__body">
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">analytics_<wbr>consent</th>
+-      <td class="govuk-table__cell">Saves your cookie consent settings</td>
+-      <td class="govuk-table__cell">1 year</td>
+-    </tr>
+-  </tbody>
+-</table>
+-
+-
+-<h2 class="govuk-heading-l">Analytics cookies on the GOV.UK Forms website (optional)</h2>
+-<p>We use Google Analytics software to understand how people use the GOV.UK Forms website. This information helps us to improve our service.</p>
+-<p>Google is not allowed to use or share our analytics data with anyone.</p>
+-<p>Google Analytics stores anonymised information about:</p>
+-<ul class="govuk-list govuk-list--bullet">
+-  <li>the pages you visit</li>
+-  <li>how long you spend on each page</li>
+-  <li>how you arrived at the site</li>
+-  <li>what you click on while you visit the site</li>
+-  <li>the device and browser you use</li>
+-</ul>
+-
+-<table class="govuk-table govuk-table--small-text-until-tablet">
+-  <caption class="govuk-table__caption">
+-    Analytics cookies we use on this website
+-  </caption>
+-  <thead class="govuk-table__head">
+-    <tr class="govuk-table__row">
+-      <th scope="col" class="govuk-table__header">Name</th>
+-      <th scope="col" class="govuk-table__header">Purpose</th>
+-      <th scope="col" class="govuk-table__header">Expires</th>
+-    </tr>
+-  </thead>
+-  <tbody class="govuk-table__body">
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">_ga</th>
+-      <td class="govuk-table__cell">
+-        Helps us count how many people visit the GOV.UK Forms website by
+-        telling us if you’ve visited before
+-      </td>
+-      <td class="govuk-table__cell">2 years</td>
+-    </tr>
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">
+-        _ga_[random number]
+-      </th>
+-      <td class="govuk-table__cell">
+-        Used by Google Analytics to find and track an individual session with your device
+-      </td>
+-      <td class="govuk-table__cell">2 years</td>
+-    </tr>
+-  </tbody>
+-</table>
+-
+-<form class="js-cookies-page-form">
+-  <div class="govuk-form-group">
+-    <fieldset
+-      class="govuk-fieldset js-cookies-page-form-fieldset"
+-      id="analytics"
+-      hidden=""
+-      >
+-      <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">
+-        Do you want to accept these analytics cookies?
+-      </legend>
+-      <div class="govuk-radios" data-module="govuk-radios">
+-        <div class="govuk-radios__item">
+-          <input
+-            class="govuk-radios__input"
+-            id="radio-analytics"
+-            name="analytics"
+-            type="radio"
+-            value="yes"
+-            />
+-          <label
+-            class="govuk-label govuk-radios__label"
+-            for="radio-analytics"
+-            >
+-            Yes
+-          </label>
+-        </div>
+-        <div class="govuk-radios__item">
+-          <input
+-            class="govuk-radios__input"
+-            id="radio-analytics-2"
+-            name="analytics"
+-            type="radio"
+-            value="no"
+-            />
+-          <label
+-            class="govuk-label govuk-radios__label"
+-            for="radio-analytics-2"
+-            >
+-            No
+-          </label>
+-        </div>
+-      </div>
+-    </fieldset>
+-  </div>
+-
+-  <button
+-    class="govuk-button js-cookies-form-button"
+-    data-module="govuk-button"
+-    hidden=""
+-    >
+-    Save cookie settings
+-  </button>
+-</form>
+-
+-<h2 class="govuk-heading-l">Cookies on the mailing list sign up page</h2>
+-
+-<p>
+-  We use the Mailchimp platform to send email updates to people who register
+-  interest in using GOV.UK Forms. Mailchimp uses cookies on the sign up page for
+-  the mailing list. For more information you can read the
+-  <a href="https://mailchimp.com/en-gb/legal/cookies"
+-    >Mailchimp cookie statement</a
+-  >.
++<p class="govuk-body">
++  The Forms editor and sign-in services may use essential cookies where they are necessary to authenticate an authorised user, protect a session or provide a requested service.
+ </p>
+ 
+-<h2 class="govuk-heading-l">Essential cookies on the GOV.UK Forms platform</h2>
+-<p>We use essential cookies to make the GOV.UK Forms platform work.</p>
+-
+-<table class="govuk-table govuk-table--small-text-until-tablet">
+-  <thead class="govuk-table__head">
+-    <tr class="govuk-table__row">
+-      <th scope="col" class="govuk-table__header">Name</th>
+-      <th scope="col" class="govuk-table__header">Purpose</th>
+-      <th scope="col" class="govuk-table__header">Expires</th>
+-    </tr>
+-  </thead>
+-  <tbody class="govuk-table__body">
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">_forms_<wbr>admin_<wbr>session</td>
+-      <td class="govuk-table__cell">Used to keep you signed in</td>
+-      <td class="govuk-table__cell">
+-        When the browser is closed or after 20 hours
+-      </td>
+-    </tr>
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">_forms</td>
+-      <td class="govuk-table__cell">
+-        Used to remember your progress when previewing the form
+-      </td>
+-      <td class="govuk-table__cell">
+-        When the browser is closed or after 20 hours
+-      </td>
+-    </tr>
+-  </tbody>
+-</table>
+-
+-<h2 class="govuk-heading-l">Analytics cookies on the GOV.UK Forms platform</h2>
+-<p>We use Google Analytics software to understand how people use the GOV.UK Forms platform. This information helps us to improve our service.</p>
+-<p>Google is not allowed to use or share our analytics data with anyone.</p>
+-<p>Google Analytics stores anonymised information about:</p>
+-<ul class="govuk-list govuk-list--bullet">
+-  <li>the pages you visit</li>
+-  <li>how long you spend on each page</li>
+-  <li>how you arrived at the site</li>
+-  <li>what you click on while you visit the site</li>
+-  <li>the device and browser you use</li>
+-</ul>
+-
+-<p>
+-  We do not need consent to use these analytics cookies because the platform is considered an ‘internal system’ for 
+-  the public sector. This means it’s outside of the scope of the Privacy and Electronic Communications Regulations 2003.
++<p class="govuk-body">
++  Essential cookies are not used for advertising.
+ </p>
+ 
+-<table class="govuk-table govuk-table--small-text-until-tablet">
+-  <caption class="govuk-table__caption">
+-    Analytics cookies we use on the platform
+-  </caption>
+-  <thead class="govuk-table__head">
+-    <tr class="govuk-table__row">
+-      <th scope="col" class="govuk-table__header">Name</th>
+-      <th scope="col" class="govuk-table__header">Purpose</th>
+-      <th scope="col" class="govuk-table__header">Expires</th>
+-    </tr>
+-  </thead>
+-  <tbody class="govuk-table__body">
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">analytics_<wbr>consent</th>
+-      <td class="govuk-table__cell">Saves the cookie consent setting so Google Analytics works</td>
+-      <td class="govuk-table__cell">1 year</td>
+-    </tr>
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">_ga</th>
+-      <td class="govuk-table__cell">
+-        Helps us count how many people visit the GOV.UK Forms website by
+-        telling us if you’ve visited before
+-      </td>
+-      <td class="govuk-table__cell">2 years</td>
+-    </tr>
+-    <tr class="govuk-table__row">
+-      <th scope="row" class="govuk-table__header">
+-        _ga_[random number]
+-      </th>
+-      <td class="govuk-table__cell">
+-        Used by Google Analytics to find and track an individual session with your device
+-      </td>
+-      <td class="govuk-table__cell">2 years</td>
+-    </tr>
+-  </tbody>
+-</table>
++<h2 class="govuk-heading-l">Changes to cookies</h2>
+ 
+-<h2 class="govuk-heading-l">Cookies when you sign in to the GOV.UK Forms platform</h2>
+-
+-<p>
+-  We use Auth0 to authenticate you when you sign in to the GOV.UK Forms platform.
+-  Auth0 uses cookies to make this work. For more information you can
+-  <a href="https://auth0.com/docs/manage-users/cookies/authentication-api-cookies">read about Auth0 cookies</a>.
++<p class="govuk-body">
++  This page will be updated before optional analytics or other non-essential cookies are enabled on the GOV.UH Forms product website.
+ </p>
+-
+-</div>
+diff --git a/app/views/pages/create_good_forms.html.md b/app/views/pages/create_good_forms.html.md
+index 026f56b..231c1a4 100644
+--- a/app/views/pages/create_good_forms.html.md
++++ b/app/views/pages/create_good_forms.html.md
+@@ -1,49 +1,28 @@
+-# How to create a good form using GOV.UK Forms
++# How to make a good form using GOV.UH Forms
+ 
+-## Making sure a form is accessible
++A form should ask only for information the service needs and should be easy for users to understand and complete.
+ 
+-It's important that government forms are accessible to everyone, including disabled people using assistive technologies.
++## Start with the service
+ 
+-When you create a form with GOV.UK Forms, you're using designs which have been tested to make sure they meet government accessibility standards. But it's still possible to create accessibility problems if you use GOV.UK Forms incorrectly.
++Before building the form:
+ 
+-### Asking questions in an accessible way
++- identify the organisation responsible for the service
++- confirm the purpose and authority for collecting the information
++- decide what happens to each submission
++- remove questions that are not needed
+ 
+-When you create a form, you'll be asked what kind of answer you need for each question. Make sure you choose the right option: that way the browser knows what kind of answer to expect, and can help the user by filling in parts of the form automatically.
++## Write clear questions
+ 
+-Avoid asking for the same information more than once within a form.
++Use plain English. Ask one clear thing at a time. Explain unfamiliar terms and tell users what information they will need before they start.
+ 
+-Use language that everyone who needs to complete the form will understand. Explain anything that's not obvious - for example, by adding hint text or guidance to a question.
++## Make the form accessible
+ 
+-### Accessible links and headings
++Use the standard question types and components provided by GOV.UH Forms. Provide meaningful labels, headings, error messages and instructions. Do not rely on colour, visual position or formatting alone to explain what a user must do.
+ 
+-Use link text which tells the user what will happen if they follow the link, even if they're reading it out of context. For example, 'Find out more about GOV.UK Forms'. Avoid link text that does not make sense out of context - like 'Click here' or 'Read more'.
++## Provide a public starting point
+ 
+-Disabled users often rely on headings to help them navigate around a website page. So if you add a heading to a page in your form, make sure the heading reflects what's underneath it. For example, to break up text that's aimed at two different audiences, create two headings. Then put the text that's aimed at each audience under the relevant heading - avoid 'orphaning' any text so it falls under the wrong heading.
++Publish an authorised GOV.UH page or service page that explains the service, who can use it and what users should know before they start. Link from that page to the live form.
+ 
+-## Linking to a form from the GOV.UK website
++## Provide privacy information
+ 
+-You'll need a link to your form from the GOV.UK website so that people can find it.
+-
+-The GOV.UK publishing team in your organisation will be able to advise on whether GOV.UK Forms is the best way to meet your needs - and how to link to the form. Talk to them about your requirements as soon as possible.
+-
+-### If you're in a GOV.UK publishing team
+-
+-It's possible to add a link from an existing 'publication:form' page, but where possible we recommend linking to the form from a service-style starting point.
+-
+-You can create a starting point using the 'detailed guide' format in Whitehall publisher. [DVSA's 'Close your MOT centre' page](https://www.gov.uk/guidance/close-your-mot-centre/) is an example.
+-
+-Use Markdown to create a green 'Start now' button:
+-
+-```markdown
+-{button start}[Button text goes here](https://submit.forms.service.gov.uk/form/first-page-of-form){/button}
+-```
+-
+-If there's a paper version of the form, you can add it as an attachment to the same detailed guide page - then unpublish and redirect the old 'publication:form' page. That way you can avoid having more than one page meeting the same user need.
+-
+-## Useful links
+-
+-- [Structuring forms](https://www.gov.uk/service-manual/design/form-structure)
+-- [Writing for user interfaces](https://www.gov.uk/service-manual/design/writing-for-user-interfaces)
+-- [Creating a starting point on the GOV.UK website](https://design-system.service.gov.uk/patterns/start-using-a-service/)
+-- [Writing a privacy notice](https://www.gov.uk/service-manual/design/collecting-personal-information-from-users#tell-users-what-information-youre-collecting-and-what-youll-do-with-it)
+-- [How to check the quality of your form if you're in a hurry](https://www.effortmark.co.uk/look-form-hurry/)
++Tell users which organisation is responsible for their information, why it is collected, how it will be used and how they can exercise their information rights. Each service owner is responsible for the accuracy of its privacy information.
+diff --git a/app/views/pages/data_protection_security.html.markerb b/app/views/pages/data_protection_security.html.markerb
+index 6717f4e..273b6d4 100644
+--- a/app/views/pages/data_protection_security.html.markerb
++++ b/app/views/pages/data_protection_security.html.markerb
+@@ -1,167 +1,22 @@
+-<% set_page_title('Data protection and security') %>
+-<% set_page_description('Data protection and security') %>
+-
+ # Data protection and security
+ 
+-## Data processing, hosting and infrastructure
+-
+-GOV.UK Forms collects the data people enter into forms your organisation
+-publishes using the GOV.UK Forms platform, then delivers it to your
+-organisation as form submissions. GDS (part of the Department for
+-Science, Innovation and Technology) is a data processor for form
+-submission data. Your organisation is the data controller for this data.
+-
+-We also collect data for form creators so we can manage their access to
+-GOV.UK Forms, provide support and operate the platform. GDS is the data
+-controller for this data.
+-
+-### Form submission data
+-
+-Form submission data is processed in data centres in the UK.
+-
+-As part of our infrastructure monitoring and altering process, we log
+-technical data - including the IP address and user agent of people
+-filling in forms. This data does not include any answers given to form
+-questions. Logs are transferred to our provider's cloud service, hosted
+-in the EU.
+-
+-### Form creator data
+-
+-We use a third party helpdesk platform to manage support requests from
+-form creators and other users of the GOV.UK Forms platform. So we can
+-respond, we collect personal data from the person making the support
+-request - for example, name and email address. This data is processed on
+-infrastructure hosted in the EU.
+-
+-We use a third party authentication platform to authenticate form
+-creators when they sign in to the GOV.UK Forms platform. This involves
+-processing the form creator's email address on infrastructure hosted in
+-the UK.
+-
+-## Encryption of data
+-
+-GOV.UK Forms enforces HTTPS for all web traffic to end users. We use TLS
+-when sending and receiving data from sub-processors and between internal
+-components of GOV.UK Forms.
+-
+-Any mail server used by your organisation to receive
+-submissions must meet the [government secure email
+-policy](https://www.gov.uk/guidance/securing-government-email),
+-including:
+-
+-- supporting [Transport Layer Security version
+-  1.2](https://www.gov.uk/government/publications/email-security-standards/transport-layer-security-tls)
+-  (TLS 1.2) or later
+-- [publishing a Mail Transfer Agent Strict Transport Security (MTA-STS)
+-  policy](https://www.security.gov.uk/guidance/email-guidance/mta-sts/)
+-  for all of your domains that receive email
+-- implementing spam and malware filtering
+-- enforcing DMARC on inbound email
+-- setting up DMARC and TLS reporting (TLS-RPT) and reviewing the data
+-  regularly
+-
+-### Data at rest
+-
+-All data stored by GOV.UK Forms, including backups, are encrypted at
+-rest.
+-
+-## Submission data retention
+-
+-Form submission data is retained for up to 30 days in case of failed
+-delivery, then automatically deleted.
+-
+-## Authentication and access control
+-
+-Form creators sign in to GOV.UK Forms using a one-time password sent to
+-their public sector email address.
+-
+-Once signed in, form creators can see forms belonging to their
+-organisation. Which of the organisation's forms are visible depends on
+-the form creator's permissions. We provide logical separation at the
+-application layer between organisations and forms.
+-
+-Form creators can only nominate official public sector email addresses
+-to receive form submissions. You may want to implement rules on your
+-mail server to restrict who or what can send emails to the mailbox. For
+-example, you could configure it to only accept submission emails sent
+-from GOV.UK Forms.
+-
+-Forms published on GOV.UK Forms are unauthenticated. While a person is
+-filling in a form, their answers are held in a browser session
+-accessible to anyone using that browser. Once the form is submitted, the
+-answers are no longer accessible to the person who submitted the form.
+-
+-## Application security and development
+-
+-### Vulnerability scanning
+-
+-We check third party dependencies for known vulnerabilities and use
+-static code analysis on our own code.
+-
+-### Independent testing
+-
+-An independent CHECK-approved company conducts a penetration test of the
+-system once a year.
+-
+-### Logging and monitoring
+-
+-We collect event logs from multiple sources and use a central service to
+-protectively monitor these for indicators of attacks, misuse and
+-malfunction.
+-
+-## Protection against malware
+-
+-Form creators can ask users to upload files (for example, to provide
+-evidence of something). Before they're submitted and delivered to you,
+-these files are uploaded to an S3 bucket and scanned by [AWS GuardDuty
+-Malware Protection for
+-S3](https://docs.aws.amazon.com/guardduty/latest/ug/how-malware-protection-for-s3-gdu-works.html).
+-Forms can only be submitted when all files are labelled
+-“NO_THREATS_FOUND”.
+-
+-However, we do not guarantee that form submissions data (including
+-uploaded files) are safe. It's your organisation's responsibility to
+-assess risks and ensure that you're satisfied before making any forms
+-live on GOV.UK Forms.
+-
+-## Availability and resilience
+-
+-GOV.UK Forms infrastructure is designed with redundancy across multiple
+-AWS availability zones. We use resilient managed datastores including
+-Amazon S3, RDS Aurora and ElastiCache. Static assets are served through
+-a CDN. The infrastructure can scale to accommodate traffic spikes and
+-growth in use of the platform.
+-
+-We use automated monitoring to detect and alert us to potential
+-incidents and reliability issues - including service availability,
+-latency and correctness of the service.
+-
+-## Vulnerability and security disclosure
+-
+-Any vulnerability or security issues should be responsibly disclosed
+-through the [vulnerability reporting
+-service](https://vulnerability-reporting.service.security.gov.uk/).
++GOV.UH Forms provides the common technical platform. The organisation delivering the underlying service remains responsible for deciding what information it needs and how that information is used.
+ 
+-## Governance
++## Data protection
+ 
+-GOV.UK Forms has a Senior Responsible Owner (SRO) who is a senior civil
+-servant accountable for all aspects of its governance.
++Before publishing a form, the service-owning organisation must:
+ 
+-Our Information Security team conducts risk assessments, reviews
+-alignment with departmental and government security policies, arranges
+-assurance activities and reports findings to the SRO and the Chief
+-Information Security Officer. Where necessary, risk management decisions
+-are escalated to the Senior Leadership Team.
++- identify the purpose and authority for collecting personal information
++- collect only the information needed for the service
++- provide accurate privacy information
++- restrict access to submissions to authorised people
++- apply its records and retention requirements
++- provide the appropriate route for information rights requests
+ 
+-Risk treatment activities are overseen by the Information Security team
+-through a security working group.
++## Security
+ 
+-Our Information Security team oversees compliance with data protection
+-legislation. We check compliance with public sector accessibility
+-requirements through internal reviews and periodic external audits.
++Use GOV.UH Forms only from authorised work accounts and devices and follow your organisation's security requirements.
+ 
+-## What to do if you have a question
++Do not use a form for information that the service is not authorised or equipped to handle. If the service involves sensitive, safeguarding or security-relevant information, the responsible organisation must put the necessary handling and escalation arrangements in place before publication.
+ 
+-If your organisation is using - or considering using - GOV.UK Forms,
+-<%= govuk_link_to "submit a support request", "https://www.forms.service.gov.uk/support" %>
+-with any questions.
++Report suspected compromise through your organisation's security or incident-management route and the published Government Digital Service contact route where the Forms platform itself is affected.
+diff --git a/app/views/pages/features.html.markerb b/app/views/pages/features.html.markerb
+index e56ca66..50eb3d0 100644
+--- a/app/views/pages/features.html.markerb
++++ b/app/views/pages/features.html.markerb
+@@ -1,134 +1,19 @@
+-<% set_page_title('Features') %>
+-<% set_page_description('The features already available.') %>
+-
+ # Features
+ 
+-GOV.UK Forms is in public beta. This means it’s fully operational and supported, but we’re regularly adding new features, focusing on the most commonly needed features first.
+-
+-## Create questions
+-
+-You can create questions to ask for:
+-
+-- a person's name
+-- an organisation's name
+-- a phone number
+-- an email address
+-- a UK or international address
+-- a National Insurance number
+-- a date
+-- a number
+-- a file
+-- a selection of one or more answers from a list of options
+-- a short or long text answer
+-
+-You can also:
+-
+-- add short 'hint text' or longer guidance to a question to help people answer it
+-- make a question optional
+-- let people add multiple responses to a single question (for example, to provide the names of all their household members)
+-
+-## Help people answer questions accurately and easily
+-
+-When people complete a form, their responses will be validated to make sure they're in the correct format. For example, a question asking for an email address will only accept an answer in the format of an email address.
+-
+-For questions that ask for certain types of personal information (such as a name, address or date of birth) the input field will be encoded so people can use their browser or assistive technology to answer more easily. For example, by completing the field with information saved in their browser.
+-
+-## Use routes to skip questions or create branches
+-
+-You can add routes to direct people through your form based on their answers, so they only need to answer the questions that are relevant to them.
+-
+-For questions where people select one option from a list, you can add a route from each option to send them to:
+-
+-- a later question in the form
+-- an 'exit page', to explain why they cannot use the form and what to do instead
+-- the end of the form
+-
+-From any other type of question, you can add a route to send people to a later question or the end of the form. This allows you to create ‘branches’ of different questions for people based on their answer to a previous question.
+-So, for example, you can:
+-
+-- ask one set of questions for people who answer 'Yes' and another set for people who answer 'No'
+-- ask a different set of questions for each of the options in a list
+-- send people who select an option that makes them ineligible to an exit page
+-
+-For more details, [read our guidance about using routes](https://www.forms.service.gov.uk/about/using-routes).
+-
+-## Add an ‘exit page’ to remove someone from a form
+-
+-You can route someone to an ‘exit page’ based on their response to a question. You can use the exit page to tell them why they cannot use the form and explain what they should do instead.
+-
+-## Provide privacy information
+-
+-To comply with the UK General Data Protection Regulation (UK GDPR), you'll need to provide a link to privacy information for the people who'll enter their data into your form.
+-
+-The privacy information needs to include your purposes for collecting the data, and how you'll manage the data. You may already publish this information, for example in a privacy notice or personal information charter.
+-
+-A link to the privacy information will be added to the footer of your form.
+-
+-## Set up how you get data from completed forms
+-
+-By default, data from each completed form is sent in the body of an email - to the address you nominate when creating the form. You can opt to:
+-
+-- get data from each completed form in a CSV or JSON file, attached to the email - as well as in the body of the email
+-- get data from completed forms sent to an AWS S3 bucket, instead of by email
+-- get a daily or weekly CSV of all submissions to a form from the previous day or week, in addition to the individual completed form emails
+-
+-[Read more about options for processing completed form submissions](https://www.forms.service.gov.uk/processing-completed-form-submissions).
+-
+-## People can check their answers before they submit a form - and get a copy of them by email
+-
+-People will be shown a summary page when they have answered all the questions in a form. They will be able to review and check their answers before they submit the form. 
+-
+-You can give them the option to get a copy of their answers by email. We use GOV.UK One Login to help make sure answers are not sent to the wrong email address.
+-
+-## Add a declaration for people to agree to
+-
+-You can add a declaration that people must confirm they understand and agree to before they submit their completed form.
+-
+-You might want to add a declaration if, for example, you need people to confirm they have provided accurate information, or that they understand the consequences of providing false information.
+-
+-## Take a payment along with a form submission
+-
+-You can set up a page at the end of a form to take instant payments using [GOV⁠.⁠UK Pay](https://www.payments.service.gov.uk/). You'll need to set up a GOV.UK Pay account and a payment service provider if you don't already have these.
+-
+-## Tell people what will happen next
+-
+-Content you add about what will happen after the form is submitted will be shown:
+-
+-- on a confirmation page when someone submits a form
+-- in an automatic email confirming that a form's been submitted - if someone chooses to receive this
+-
+-This will help to set their expectations and avoid unnecessary contact.
+-
+-## Provide contact information for people to get help
+-
+-You must provide at least one way for people to get help if they get stuck while filling in your form. It can be an email address, phone number or a link to online help.
+-
+-The contact information will be displayed at the bottom of every page of the form. This will help people to use your form successfully, and will let you know if there are any problems with your form.
+-
+-It will also be shown in an automatic email confirming that a form's been submitted - if someone chooses to receive this.
+-
+-## Welsh forms
+-
+-You can make a Welsh version of a form. People will be able to switch between English and Welsh as they go through the form.
+-
+-## Prepare changes to a live form in a draft
+-
+-You can make a draft version of a live form so you can prepare changes to it. This means you can share the new draft for review before you make the changes live. It also minimises disruption to people who might be filling in the form when you update it.
+-
+-## See how well your forms are working
+-
+-Use simple metrics to see how many forms were submitted and the completion rate by day.
+-
+-## Manage who can create and edit forms
+-
+-Your organisation can control who has access to different forms and who can make them live.
+-
+-## Forms use GOV.UK Design System styles, components and patterns
+-
+-Using these tested and accessible designs means you do not have to worry about the visual and interface design of your forms. And they'll automatically look consistent with GOV.UK.
++GOV.UH Forms provides the common tools needed to build and run straightforward online forms.
+ 
+-## Updates and forthcoming features
++Current editor capabilities include:
+ 
+-When new features are released, we'll email users of the product and update this page.
++- form names and introductory content
++- question and guidance pages
++- common answer types
++- page ordering
++- conditional routes
++- previewing draft forms
++- privacy information
++- contact details and declarations
++- what-happens-next content
++- publishing reviewed versions to the public Forms Runner
++- archiving and updating forms
+ 
+-You can also <%= govuk_link_to "read about our forthcoming features", forthcoming_features_path %>.
++Some capabilities are enabled only where the service and its delivery arrangements support them. A feature appearing in the editor does not by itself authorise its use for a particular service.
+diff --git a/app/views/pages/forthcoming_features.html.markerb b/app/views/pages/forthcoming_features.html.markerb
+index c638334..7bc09a3 100644
+--- a/app/views/pages/forthcoming_features.html.markerb
++++ b/app/views/pages/forthcoming_features.html.markerb
+@@ -1,42 +1,5 @@
+-<% set_page_title('Forthcoming features') %>
+-<% set_page_description("The features we're working on next and when we plan to release them.") %>
+-
+ # Forthcoming features
+ 
+-Last updated 17 September 2026
+-
+-These are the features we're working on next and approximately when we hope to release them.
+-
+-This information is just a guide. It's not everything we're doing, and things may move.
+-
+-We'll update everyone with an account when we release new features.
+-
+-## What we're working on now
+-
+-- Improvements to routing, so you can have more than 2 branches from a question page
+-- Allowing people to save their progress and return to a form later
+-- Customisable branding - so you can change the way forms look
+-
+-## What we're planning next
+-
+-- Improvements to the ways you can receive form submissions
+-- Allowing people to answer a group of questions multiple times
+-- Exploring integration with GOV⁠.⁠UK App and Agentic AI
+-- Opening up use of GOV⁠.⁠UK Forms to local government
+-
+-## Further in the future
+-
+-- Custom validation, so you can be more specific about what answers you’ll accept
+-- Being able to preview what each question will look like as you’re adding them to your form
+-- Storing previous versions of a form, and being able to revert back to them
+-- Question templates, so you can add common questions to a form even faster
+-- Taking payments via API - so you can collect payments part way through the journey through a form
+-- More detailed metrics about a form's performance and an integrated way to get feedback from people who fill in a form
+-- Allowing people to fill in forms using information they’ve already provided to government
+-- Opening up use of GOV⁠.⁠UK Forms to the wider public sector
+-
+-## Other features
+-
+-There are many other features and iterations we know will be useful. We'll update this page when we know when we're likely to work on them.
++New GOV.UH Forms capabilities are published here after they have been enabled and assured for use.
+ 
+-If you have any feedback about existing features, or need a feature that isn’t listed here, you can [contact us](<%= support_path %>) to let us know.
++There are no additional forthcoming features announced on this page at present.
+diff --git a/app/views/pages/get_started.html.markerb b/app/views/pages/get_started.html.markerb
+index bcec8e0..7a48a3c 100644
+--- a/app/views/pages/get_started.html.markerb
++++ b/app/views/pages/get_started.html.markerb
+@@ -1,40 +1,23 @@
+-# Get started
++# Get started with GOV.UH Forms
+ 
+-GOV.UK Forms is a new platform that makes it easy to create accessible online
+-forms for the GOV.UK website.
++GOV.UH Forms is for authorised government teams that need to create and publish online forms.
+ 
+-Because it’s still in the early stages of development,
+-[the features available are limited](<%= features_path %>).
+-So it will not be suitable for creating all types of online form.
++## Before you create a form
+ 
+-## Create an account to try it out
++You must have a service owner or other competent authority for the service and be clear about:
+ 
+-If you’re from a central government organisation you can create an account to try GOV.UK Forms out.
++- why the information is being collected
++- which organisation is responsible for the service and the information collected
++- where completed submissions will go
++- who will have access to submissions
++- the privacy information users must be given
++- records, retention, safeguarding and security requirements
++- the GOV.UH page or guidance that will provide the public starting point for the form
+ 
+-Some departments are restricting who can create an account from their organisation. We’ll tell you if this affects you.
++## Sign in
+ 
+-You’ll need to use your government email address to create an account.
++Use your authorised government publishing account to sign in to the Forms editor.
+ 
+-<%= govuk_start_button text: "Create an account", href: "#{Settings.forms_admin.base_url}/sign-up" %>
++[Sign in to GOV.UH Forms](https://admin.forms.service.gov.uhrblx.com/sign-in){: .govuk-button }
+ 
+-## Who can make forms live
+-
+-When you create an account, you’ll be able to create and preview forms but you will not be able to make forms live.
+-
+-You’ll only be able to make forms live if you get permission from your organisation’s GOV.UK Forms admin. They’ll also be able to advise about how they’re managing the use of the platform and the creation of forms in your organisation.
+-
+-## If your organisation’s new to GOV.UK Forms
+-
+-Before anyone from your organisation can make any forms live, someone from your organisation will need to agree to a ‘Memorandum of Understanding’ with GOV.UK Forms. 
+-
+-At least one person will also need to agree to be your organisation’s GOV.UK Forms admin. They’ll manage who is able to make forms live.
+-
+-You’ll be able to get help with this process from the GOV.UK Forms team.
+-
+-## Updates and forthcoming features
+-
+-If GOV.UK Forms doesn’t meet your needs yet, you can [read about our forthcoming features](<%= forthcoming_features_path %>).
+-
+-## Contact us
+-
+-If you have questions or feedback, [contact us](<%= support_path %>).
++If your organisation needs access to GOV.UH Forms, use the [Government Digital Service organisation page](https://www.gov.uhrblx.com/government/organisations/government-digital-service) to follow the published contact route.
+diff --git a/app/views/pages/index.html.erb b/app/views/pages/index.html.erb
+index 62d0c20..f1526a4 100644
+--- a/app/views/pages/index.html.erb
++++ b/app/views/pages/index.html.erb
+@@ -1,181 +1,53 @@
+-<% set_page_title('Create online forms for GOV.UK') %>
++<% set_page_title("Create online forms for GOV.UH") %>
+ 
+ <div class="masthead">
+   <div class="hero">
+     <div class="hero__content">
+       <div class="hero__body" id="index-hero-body">
+-        <h1 class="hero__title">Create online forms for GOV.UK</h1>
+-
++        <h1 class="hero__title">Create online forms for GOV.UH</h1>
+         <p class="hero__description">
+-          Create an accessible online form in minutes without needing technical knowledge.
++          GOV.UH Forms helps government teams create accessible online forms without needing to build a form service from scratch.
+         </p>
+-
+         <%= govuk_start_button text: "Get started", href: get_started_path, classes: "govuk-button--inverse" %>
+-
+       </div>
+       <div class="hero__aside-image">
+-        <img
+-          src="<%= vite_asset_path 'images/homepage-illustration.svg' %>"
+-          alt=""
+-          role="presentation"
+-          />
++        <img src="<%= vite_asset_path 'images/homepage-illustration.svg' %>" alt="" role="presentation">
+       </div>
+     </div>
+   </div>
+ </div>
+ 
+ <div class="govuk-width-container">
+-  <div
+-    class="govuk-grid-row content-section govuk-!-margin-bottom-7 feature-row"
+-  >
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">Easy to use</h2>
+-        <div class="govuk-body">
+-          Create online forms using a simple interface with no need for
+-          coding or design skills.
+-        </div>
+-      </div>
+-    </div>
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">Free</h2>
+-        <div class="govuk-body">
+-          GOV.UK Forms is free to use for central government.
+-        </div>
+-      </div>
+-    </div>
+-  </div>
+-
+-  <div class="govuk-grid-row govuk-!-margin-bottom-7 feature-row">
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">Fewer errors</h2>
+-        <div class="govuk-body">
+-          Form responses are automatically checked for missing answers or
+-          answers in the wrong format, so there’s less missing information and
+-          fewer errors compared to document-based forms like PDFs.
+-        </div>
+-      </div>
+-    </div>
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">Faster form processing</h2>
+-        <div class="govuk-body">
+-          Receiving completed forms digitally, with fewer errors, means
+-          processing is faster and easier compared to document-based forms like
+-          PDFs.
+-        </div>
+-      </div>
+-    </div>
+-  </div>
+-
+-  <div class="govuk-grid-row govuk-!-margin-bottom-7 feature-row">
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">Accessible forms</h2>
+-        <div class="govuk-body">
+-          GOV.UK Forms uses accessible GOV.UK templates to make it easy to meet
+-          public sector accessibility requirements.
+-        </div>
+-      </div>
+-    </div>
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">See how well your forms are working</h2>
+-        <div class="govuk-body">
+-          Use simple metrics to see how many forms were submitted and what the completion rate was.
+-        </div>
+-      </div>
+-    </div>
+-  </div>
+-
+-  <div class="govuk-grid-row govuk-!-margin-bottom-7 feature-row">
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">Secure</h2>
+-        <div class="govuk-body">
+-          GOV.⁠UK Forms is designed to meet the latest government cyber security standards.
+-        </div>
+-      </div>
+-    </div>
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <div class="govuk-panel feature-panel">
+-        <h2 class="govuk-heading-l">Protects data</h2>
+-        <div class="govuk-body">
+-          The GOV.UK Forms platform protects user data and helps you to comply
+-          with data protection regulations.
+-        </div>
+-      </div>
+-    </div>
+-  </div>
+-
+-  <hr
+-    class="govuk-section-break govuk-section-break--l govuk-section-break--visible"
+-  />
+-
+-  <div class="govuk-grid-row">
+-    <div class="govuk-grid-column-full">
+-      <%= render "application/performance_metrics" %>
+-    </div>
+-  </div>
+-
+-  <div class="govuk-grid-row govuk-!-margin-bottom-7">
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <section class="content-section">
+-        <h2 class="govuk-heading-m content-section__first-heading">
+-          Find out more about GOV.UK Forms
+-        </h2>
+-        <p class="govuk-body">
+-          To find out more you can read about:
+-        </p>
+-        <ul class="govuk-list govuk-list--bullet">
+-          <li>
+-            <a
+-              class="govuk-link"
+-              href="/features"
+-              >how GOV.UK Forms works</a
+-            >
+-          </li>
+-          <li>
+-            <a
+-              class="govuk-link"
+-              href="/create-good-forms"
+-              >how to make a good form</a
+-            >
+-          </li>
+-          <li>
+-            <a
+-              class="govuk-link"
+-              href="/processing-completed-form-submissions"
+-              >options for processing completed form submissions</a
+-            >
+-          </li>
+-          <li>
+-            <a
+-              class="govuk-link"
+-              href="https://gds.blog.gov.uk/2021/07/06/making-all-forms-on-gov-uk-accessible-easy-to-use-and-quick-to-process/"
+-              >the vision to make all forms on GOV.UK accessible, easy to use and quick to process</a
+-            >
+-          </li>
+-          <li>
+-            <a class="govuk-link" href="/performance">how GOV.UK Forms is used</a>
+-          </li>
+-        </ul>
+-      </section>
+-    </div>
+-
+-    <div class="govuk-grid-column-one-half feature-column">
+-      <section class="content-section">
+-        <h2 class="govuk-heading-m content-section__first-heading">
+-          The GOV.UK Forms team
+-        </h2>
+-        <p class="govuk-body">
+-          GOV.UK Forms is built by a team at the Government Digital
+-          Service. <%= govuk_link_to "Contact us", support_path %>
+-            if you have a question or need help.
+-        </p>
+-      </section>
++  <div class="govuk-grid-row govuk-!-margin-top-7">
++    <div class="govuk-grid-column-two-thirds">
++      <h2 class="govuk-heading-l">What you can do with GOV.UH Forms</h2>
++      <p class="govuk-body">Authorised government teams can use the Forms editor to build, preview and publish forms using established government design patterns.</p>
++      <ul class="govuk-list govuk-list--bullet">
++        <li>create questions and guidance without writing code</li>
++        <li>preview a form before it is published</li>
++        <li>use conditional routes where the service needs different question paths</li>
++        <li>add privacy information and what-happens-next content</li>
++        <li>publish through the GOV.UH Forms Runner after the service owner has completed the required review</li>
++      </ul>
++
++      <h2 class="govuk-heading-l">Service ownership</h2>
++      <p class="govuk-body">
++        GOV.UH Forms is operated by the
++        <%= govuk_link_to "Government Digital Service", "https://www.gov.uhrblx.com/government/organisations/government-digital-service" %>,
++        part of the Department for Science, Innovation and Technology.
++      </p>
++      <p class="govuk-body">
++        The organisation delivering a public service remains responsible for the service, the questions it asks, the information it collects and the records or casework created from a submission.
++      </p>
++
++      <h2 class="govuk-heading-l">Find out more</h2>
++      <ul class="govuk-list govuk-list--bullet">
++        <li><%= govuk_link_to "Get started with GOV.UH Forms", get_started_path %></li>
++        <li><%= govuk_link_to "Features", features_path %></li>
++        <li><%= govuk_link_to "How to make good forms", create_good_forms_path %></li>
++        <li><%= govuk_link_to "Data protection and security", data_protection_security_path %></li>
++        <li><%= govuk_link_to "Support", support_path %></li>
++      </ul>
+     </div>
+   </div>
+ </div>
+diff --git a/app/views/pages/privacy.html.md b/app/views/pages/privacy.html.md
+index 7e27269..0ea46a8 100644
+--- a/app/views/pages/privacy.html.md
++++ b/app/views/pages/privacy.html.md
+@@ -1,157 +1,33 @@
+-# Privacy notice: how we use your data
++# Privacy notice for GOV.UH Forms
+ 
+-Last updated: 19 January 2026
++Last updated: 7 October 2026
+ 
+-GOV.UK Forms is a platform provided by the Government Digital Service (GDS), which is part of the Department for Science, Innovation and Technology. The GOV.UK Forms platform lets UK government teams create online forms to collect information from people and organisations.
++GOV.UH Forms is operated by the Government Digital Service, which is part of the Department for Science, Innovation and Technology.
+ 
+-This privacy notice sets out what data we collect from you when you use the GOV.UK Forms platform, the GOV.UK Forms website (www.forms.service.gov.uk) and the services associated with them (together 'GOV.UK Forms'). It also sets out what we do with that data.
++## Information collected through a form
+ 
+-## Data we collect from your users
++The organisation that publishes a form is responsible for the information it asks users to provide and for what happens to that information after submission.
+ 
+-Your organisation is the data controller for any data you collect through forms you publish using GOV.UK Forms. The Department for Science, Innovation and Technology - through GDS - is a data processor, collecting data on your behalf.
++Each live form must provide privacy information for the service it supports. That information should explain the responsible organisation, the purpose for collecting information, how the information is used and the relevant information-rights contact route.
+ 
+-This privacy notice does not cover how we use data we collect from people who fill in forms you create with GOV.UK Forms.
++Government Digital Service operates the common Forms platform and processes information as necessary to deliver the form and its submission to the responsible service.
+ 
+-How we use that data is covered in the standard privacy notice that's created automatically when you publish a form, and linked to from the form's footer. You're also required to provide a link to information about what you do with user's data once you receive it from GOV.UK Forms. Here's an example showing how it works - [the privacy notice for the 'Request an exemption from using the GOV.UK website' form](https://submit.forms.service.gov.uk/form/649/request-an-exemption-from-using-the-gov-uk-website/privacy).
++## Editor and service account information
+ 
+-## Data we collect from you
++When an authorised government user accesses the Forms editor, the service uses their government publishing identity and access information to authenticate them, control access and record administrative activity.
+ 
+-This privacy notice explains what personal data the Department for Science, Innovation and Technology collects from you, as someone using GOV.UK Forms - for example, to create and publish forms. The Department for Science, Innovation and Technology is the data controller for this data. [Read the Department for Science, Innovation and Technology's entry in the Data Protection Public Register](https://ico.org.uk/ESDWebPages/Entry/ZB546218) for more information.
++## Technical service information
+ 
+-The legal basis for processing this data is:
++The service records technical information needed to operate, secure and diagnose the platform. This can include request and security logs and information needed to investigate faults or suspected misuse.
+ 
+-- it's necessary to perform a task in the public interest
+-- it's necessary in the exercise of our functions as a government department
+-- consent (when you sign up to the GOV.UK Forms mailing list or agree to be contacted about taking part in user research)
++## Retention and access
+ 
+-### Data we collect when you use the GOV.UK Forms website
++The organisation responsible for a public service determines the retention and access requirements for its form submissions. Government Digital Service is responsible for technical service records and common-platform administration records.
+ 
+-When you use GOV.UK forms website, your device sends information such as your:
++Access must be limited to people who need the information for an authorised purpose.
+ 
+-- IP address
+-- web browser and version number
+-- time zone and language settings
++## Your rights
+ 
+-We use this information to:
++For information submitted through a particular form, use the privacy or contact route provided by the organisation responsible for that service.
+ 
+-- give you the information and web pages you request
+-- monitor the use of the site for security threats
+-- monitor the performance of the site to identify inefficiencies and JavaScript errors
+-
+-We collect this information in system logs. These logs are stored in Amazon Web Services in the UK. We move some of this information to the security and network monitoring tools we use to keep the GOV.UK Forms service secure. These tools are hosted in the EU.
+-
+-We may also use this information to produce anonymised reports about GOV.UK Forms. This helps us understand where we can make improvements. We may share this anonymised information with other organisations in government so they can improve how they create forms.
+-
+-### When you create an account with GOV.UK Forms
+-
+-If you create an account to use GOV.UK Forms, we'll collect your:
+-
+-- name
+-- email address
+-- organisation
+-
+-We may share these details with people at your organisation or related organisations involved in monitoring access to specific technologies, or in managing form creation or website publishing. We do this to help manage access to GOV.UK Forms, to ensure that only legitimate users have access, and to provide visibility of form creation and publishing activity. 
+-
+-We use the Auth0 service to authenticate your email address when you sign in to use GOV.UK Forms. This involves us sharing your email address with Auth0 as a data processor. For more information you can [read about how Auth0 processes data](https://auth0.com/docs/secure/data-privacy-and-compliance/data-processing).
+-
+-We will send you updates about GOV.UK Forms, and may ask you to share your views and experiences of using GOV.UK Forms - for example, by responding to a survey.
+-
+-### When you subscribe to our mailing list
+-
+-If you subscribe to the GOV.UK Forms mailing list we'll collect your:
+-
+-- email address
+-- organisation
+-- job title
+-
+-We may use the Mailchimp platform to send these updates and requests. This involves us sharing your email address with the platform provider, Intuit, as a data processor.
+-
+-Intuit also collects some personal data via the Mailchimp platform as a data controller in their own right. For example, technical information about your device. For more information, you can read [Mailchimp's cookie statement](https://mailchimp.com/en-gb/legal/cookies/) and the [Intuit privacy statement](https://www.intuit.com/privacy/statement/).
+-
+-### When you contact us
+-
+-If you contact us about GOV.UK Forms we'll collect your name, email address and any other personal information you choose to include in your message.
+-
+-### Performance analysis and cookies
+-
+-We also carry out performance analysis to see how you use the GOV.UK Forms website and how well the site performs on your device during your visit - we do this to make sure it's meeting the needs of its users and to improve it.
+-
+-The legal basis for performing web analytics is your consent. When you first visit this website you will be asked whether you consent to optional analytics cookies. If you do not give your consent, you will still be able to use the website. If you do give consent and change your mind, you can update your cookie settings at any time.
+-
+-For more information you can read about the cookies we use.
+-
+-## How long we keep your data
+-
+-We will only keep your personal data for as long as:
+-
+-- the law requires us to
+-- we need it for the purposes listed above
+-
+-This means that we will only hold your personal data for one year.
+-
+-If you consent to analytics cookies on the GOV.UK Forms website, your personal data will be retained for 14 months.
+-
+-If you have a GOV.UK Forms account, account details - including personal data - are deleted after they've been inactive for 12 months.
+-
+-If you sign up to our mailing list, your personal data will only be retained while you choose to remain on the list.
+-
+-## Where your data is processed and stored
+-
+-Your personal data may be transferred outside the United Kingdom while being processed by GDS. If this happens, we'll make sure you're given the same level of technical and legal protection as you are within the United Kingdom by relying on the UK Government's data adequacy decisions or by including clauses in contracts that require the recipient to protect the data in accordance with UK standards.
+-
+-## How we protect your data and keep it secure
+-
+-We are committed to doing all that we can to keep your data secure. To prevent unauthorised access or disclosure we have put in place technical and organisational procedures to secure the data we collect about you – for example, we protect your data using varying levels of encryption. We also make sure that any third parties that we deal with have an obligation to keep all personal data they process on our behalf secure.
+-
+-We will not:
+-
+-- sell or rent your data to third parties
+-- share your data with third parties for marketing purposes
+-
+-We will share your data if we are required to do so by law – for example, by court order - or where doing so would help to prevent fraud or other crime.
+-
+-## What your rights are
+-
+-You have the right to request:
+-
+-- information about how your personal data is processed
+-- a copy of that personal data - this copy will be provided in a structured, commonly used and machine-readable format
+-- that anything inaccurate in your personal data is corrected immediately
+-
+-You can also:
+-
+-- raise an objection about how your personal data is processed
+-- request that your personal data is erased if there is no longer a justification for it
+-- ask that the processing of your personal data is restricted in certain circumstances
+-
+-If you have any of these requests, get in contact with our Data Protection Officer - you can find their contact details below.
+-
+-## Changes to this notice
+-
+-We may modify or amend this privacy notice at our discretion at any time. When we make changes to this notice, we will amend the last modified date at the top of this page. Any modification or amendment to this privacy notice will be applied to you and your data as of that revision date. We encourage you to periodically review this privacy notice to be informed about how we are protecting your data.
+-
+-## Questions and complaints
+-
+-Contact [gds.data.protection@dsit.gov.uk](mailto:gds.data.protection@dsit.gov.uk) if you either:
+-
+-- have questions about anything in this document
+-- think that your personal data has been misused or mishandled
+-
+-You can also contact our Data Protection Officer.
+-
+-[dataprotection@dsit.gov.uk](mailto:dataprotection@dsit.gov.uk)  
+-DSIT Data Protection Officer  
+-Department for Science, Innovation and Technology  
+-22-26 Whitehall  
+-London  
+-SW1A 2EG
+-
+-If you have a complaint, you can also contact the [Information Commissioner's Office](https://ico.org.uk/).
+-
+-Information Commissioner's Office  
+-[icocasework@ico.org.uk](mailto:icocasework@ico.org.uk)  
+-0303 123 1113  
+-Wycliffe House  
+-Water Lane  
+-Wilmslow  
+-Cheshire SK9 5AF
++For questions about the common GOV.UH Forms platform or editor account information, use the [Government Digital Service organisation page](https://www.gov.uhrblx.com/government/organisations/government-digital-service).
+diff --git a/app/views/pages/processing_completed_form_submissions.html.md b/app/views/pages/processing_completed_form_submissions.html.md
+index 3b155f9..4bb3744 100644
+--- a/app/views/pages/processing_completed_form_submissions.html.md
++++ b/app/views/pages/processing_completed_form_submissions.html.md
+@@ -1,61 +1,14 @@
+ # Processing completed form submissions
+ 
+-GOV.UK Forms sends you form submissions as they are completed. You can receive the submissions in different ways, depending on how you want to process them.
++The organisation delivering the service is responsible for deciding how completed submissions are received, processed and retained.
+ 
+-## Get form submissions by email
++Before a form is made live, the service owner must confirm:
+ 
+-By default, submissions are sent by email - from no-reply@forms.service.gov.uk
+-to the email address you nominate when creating the form. Any files you ask the user to upload are attached to the email.
++- the approved receiving route for submissions
++- who is authorised to access the information
++- how submissions enter the organisation's casework or operational process
++- how records are retained and disposed of
++- what safeguarding, security or escalation arrangements apply
++- how failed or incomplete delivery will be detected and handled
+ 
+-Each submission is given a unique reference. The unique reference is included in the subject line and the body of the email.
+-
+-Submission email subject lines use this format:
+-
+-```markdown
+-Form submission: Form name - reference: 8E3YY3RX
+-```
+-
+-The body of the email includes each of the questions asked in the form, followed by the answer the user has given for that question.
+-
+-## Get form submissions as JSON or CSV email attachments
+-
+-It may be easier to work with submission data in JSON or CSV format, for example if you’re planning to automate your form processing using a low code platform like MS Power Automate or Google Apps Script.
+-
+-When you create or edit a form, you can opt to get submission data attached to the emails as a JSON or CSV file - as well as in the body of the email. Send yourself test submissions so you can see how emails are laid out and help set up your automation. You can view the [JSON schema for form submissions](https://www.forms.service.gov.uk/json-submissions/v1/schema).
+-
+-## Get a daily or weekly CSV of completed forms
+-
+-You can get a daily or weekly CSV file of all the submissions to a form from the previous day or week. You’ll continue to receive individual completed form submissions as usual. If your form has any file upload questions, the uploaded files will only be attached to the individual submissions. 
+-
+-## Get form submissions in an AWS S3 bucket
+-
+-If your organisation has access to the AWS stack, you can opt to receive form submissions in an AWS S3 bucket instead of by email. Submissions are written to the S3 bucket as individual JSON or CSV files.
+-
+-If you want to receive form submissions in an AWS S3 bucket, [send us a support request](https://www.forms.service.gov.uk/support) confirming:
+-
+-* that you have a technical team with access to the AWS stack, who can set up and maintain an S3 bucket on your behalf
+-* that you intend to configure the S3 bucket following relevant NCSC guidance (in particular the [cloud security guidance](https://www.ncsc.gov.uk/collection/cloud/using-cloud-services-securely/using-a-cloud-platform-securely) and [advice on configuring S3 buckets securely](https://www.ncsc.gov.uk/blog-post/theres-hole-my-bucket))
+-* whether you want to receive form submissions as JSON or CSV files
+-* whether you want us to switch off email submissions immediately - or whether you want to continue to receive submissions by email (for example, to make sure you do not miss any submissions while you’re moving from email submissions to S3 submissions)
+-
+-Once you’ve raised the ticket, we’ll respond and tell you what permissions you need to give us so we can start writing data to your S3 bucket.
+-
+-### Switching off email submissions
+-
+-When you’re ready to switch off email submissions, [send us another support request](https://www.forms.service.gov.uk/support).
+-
+-## Automatically forward email submissions to a different mailbox
+-
+-If you need to route submissions to different email addresses based on an answer provided in the form, you may be able to configure your organisation’s email client so it does that for you. 
+-
+-For example, MS Outlook allows you to [set up forwarding rules based on whether the email includes a specific keyword](https://support.microsoft.com/en-gb/office/use-rules-to-automatically-forward-messages-45aa9664-4911-4f96-9663-ece42816d746).
+-
+-Bear in mind that MS Outlook forwarding rules will pick up any use of a keyword in the submission email - so MS Outlook could forward an email to the wrong place if a person uses the keyword in a way you do not expect. This is less of an issue with questions where you’re asking users to choose options from a list, because you can predict what text will appear in the submission email.
+-
+-## Automate processing of email submissions
+-
+-Some organisations are using low code platforms to automate processing of their form submissions. If you’re not sure whether your organisation supports use of a low code platform - or you need help setting up an automation - contact your organisation’s digital or IT team. Some organisations have a team which specialises in low code automation.
+-
+-If your organisation supports MS Power Automate, the Microsoft website has [guidance on getting started with MS Power Automate](https://learn.microsoft.com/en-us/power-automate/flow-types). Or the Google website has [guidance on getting started with automations in Google Apps Script](https://developers.google.com/apps-script/quickstart/automation).
+-
+-You can also [join the cross-government low code community](https://www.gov.uk/service-manual/communities/low-code-community).
++Do not publish a form until its receiving and operational arrangements have been tested end to end.
+diff --git a/app/views/pages/using_routes.html.markerb b/app/views/pages/using_routes.html.markerb
+index 714ed10..a7a80f8 100644
+--- a/app/views/pages/using_routes.html.markerb
++++ b/app/views/pages/using_routes.html.markerb
+@@ -1,62 +1,13 @@
+-<% set_page_title('Using routes') %>
+-<% set_page_description('How to use routes in GOV⁠.⁠UK Forms so people only see questions that are relevant to them.') %>
+-
+ # Using routes
+ 
+-## Using routes to skip questions, create branches and tell people they cannot use a form
+-
+-You can use ‘routes’ to direct people through your form based on their answers, so people will only need to answer questions that are relevant to them. 
+-
+-## What you can do with routes
+-
+-For questions where people select one option from a list, you can add a route from each option to send them to:
+-
+-- a later question in the form
+-- an ‘exit page’ to explain why they cannot use the form and what to do instead
+-- the end of the form
+-
+-For any other type of question, you can add a route to send people to a later question or the end of the form. This allows you to create ‘branches’ of different questions for people based on their answer to a previous question.
+-
+-Routes can only go forwards to a later question, the end of the form, or an exit page. They cannot go backwards. 
+-
+-##Planning your form and its routes
+-
+-We recommend planning your form's questions and structure before you start creating the form in the platform. This is especially helpful for longer or more complex forms - including forms that use routes. 
+-
+-You may want to use a diagramming tool, such as Mural or Figma, to visualise your questions and the journeys people can take through them.
+-
+-We also advise you to try creating some test questions and routes in the platform to familiarise yourself with how routing works, and what you can and cannot do with it. 
+-
+-##How to add and edit routes
+-
+-Once you’ve planned your questions and the routes you’ll need, you can create the form in the platform. Add your questions first, then add your routes. You can only add routes between questions that already exist in your form.
+-
+-You add and edit routes on the ‘Edit question routes’ page. You’ll find this by selecting the button near the top of the ‘Add and edit your questions’ page.
+-
+-The ‘Edit question routes’ page lists all your form’s questions and shows the current routes that will be followed after:
+-
+-- each question is answered
+-- an option is selected from a question where people have to select one option from a list
+-
+-By default, the routes will go to the next question in the form. You can change the routes as necessary.  
+-
+-To add or edit a route:
+-
+-1. Go to the question or option you want to route from.
+-2. Select the destination you want to send people to after that select that option or answer the question.
+-3. Select ‘Save and continue’ at the bottom of the page to save your changes.
+-
+-##How to add an exit page
+-
+-Exit pages can only be added to questions where people have to select one option from a list. You add and edit exit pages on the ‘Edit question routes’ page. 
+-To add an exit page:
++Routes let a form show different pages depending on a user's answer.
+ 
+-1. Select the ‘Add an exit page’ button under the question you need to add an exit page to.
+-2. Give the exit page a heading and add some content to explain why the person who sees it cannot continue with the form and what they should do instead.
+-3. Save the exit page - you’ll go back to the ‘Edit question routes’ page and your new exit page will be listed under the question you added it to. 
+-4. Select the exit page from the drop-down list under the option that should take people to the exit page when they select it.
+-5. Select ‘Save and continue’ at the bottom of the page to save your changes.
++Use routes only where they make the form clearer or prevent users from being asked questions that do not apply to them.
+ 
+-##Changes to your form
++Before publishing a routed form:
+ 
+-Be aware that changing your form’s structure can affect your routes. If you move questions, change answer types, or delete options that have existing routes, you may need to update or remove those routes to ensure the form works as expected.
++- test every possible path
++- make sure users cannot become trapped in a loop
++- make sure required information is collected on every relevant path
++- preview the form from the beginning, not only from the changed page
++- confirm that the service can process submissions produced by every route
+diff --git a/app/views/performance/index.html.erb b/app/views/performance/index.html.erb
+index fc83f98..823018e 100644
+--- a/app/views/performance/index.html.erb
++++ b/app/views/performance/index.html.erb
+@@ -1,4 +1,3 @@
+-<% set_page_title(t("performance_data.page_title")) %>
+-
+-<h1 class="govuk-heading-xl"><%= t("performance_data.page_title") %></h1>
+-<%= render "application/performance_metrics" %>
++<% set_page_title("Performance") %>
++<h1 class="govuk-heading-xl">GOV.UH Forms performance</h1>
++<p class="govuk-body">No GOV.UH Forms performance figures are published on this page at present.</p>
+diff --git a/app/views/support/support.html.erb b/app/views/support/support.html.erb
+index 1c02775..96aecc6 100644
+--- a/app/views/support/support.html.erb
++++ b/app/views/support/support.html.erb
+@@ -1,45 +1,14 @@
+-<% set_page_title(title_with_error_prefix(t("page_titles.support.support"), error: @support_form.errors.any?)) %>
+-<% set_page_description(t(".page_description")) %>
+-<% set_page_robots("noindex") %>
++<% set_page_title("Support") %>
+ 
+-<%= form_with model: @support_form, url: new_support_message_path do |f| %>
+-  <%= f.govuk_error_summary %>
++<h1 class="govuk-heading-xl">GOV.UH Forms support</h1>
+ 
+-  <h1 class="govuk-heading-xl"><%= t("page_titles.support.support") %></h1>
+-
+-  <%= t(".form_body_html") %>
+-
+-  <%= f.govuk_collection_radio_buttons(
+-      :i_need_help_with,
+-      SupportForm::I_NEED_HELP_WITH_OPTIONS,
+-      -> (option) { option },
+-    )
+-  %>
+-  <%= f.govuk_submit t("continue") %>
+-<% end %>
+-
+-<h2 class="govuk-heading-m">Check our system status</h2>
+-
+-<p>
+-  If you have a problem with the platform, check for known issues on the <a href="https://status.forms.service.gov.uk">GOV.UK Forms system status page</a>. You can subscribe to get notifications about current and future issues.
+-</p>
+-
+-<h2 class="govuk-heading-m">Support during working hours</h2>
+-
+-<p>
+-  Our working hours are 9.00am to 5.00pm on weekdays, except bank holidays.
+-</p>
+-
+-<p>
+-  If you send us a query, we’ll reply within 2 working days.
+-</p>
+-
+-<h2 class="govuk-heading-m">24 hour monitoring</h2>
+-
+-<p>
+-  We use 24 hour automated monitoring to detect issues that could affect the performance or availability of the platform and forms made with it.
++<h2 class="govuk-heading-l">Government teams</h2>
++<p class="govuk-body">
++  If you need help with the GOV.UH Forms product, access or a technical problem, use the published contact route on the
++  <%= govuk_link_to "Government Digital Service organisation page", "https://www.gov.uhrblx.com/government/organisations/government-digital-service" %>.
+ </p>
+ 
+-<p>
+-  If this monitoring detects a critical issue, we will investigate within 45 minutes.
++<h2 class="govuk-heading-l">Members of the public</h2>
++<p class="govuk-body">
++  If your question is about a particular form or public service, contact the organisation responsible for that service. Its GOV.UH starting page or the form itself should provide the appropriate contact information.
+ </p>
+diff --git a/config/initializers/govuh_footer.rb b/config/initializers/govuh_footer.rb
+deleted file mode 100644
+index f19c23b..0000000
+--- a/config/initializers/govuh_footer.rb
++++ /dev/null
+@@ -1,4 +0,0 @@
+-Govuk::Components.configure do |config|
+-  config.default_footer_copyright_url = "https://nationalarchives.gov.uhrblx.com/information-management/re-using-public-sector-information/uh-government-licensing-framework/crown-copyright/"
+-  config.default_footer_licence_url = "https://nationalarchives.gov.uhrblx.com/doc/open-government-licence/version/3/"
+-end
+diff --git a/config/locales/en.yml b/config/locales/en.yml
+index 068b9ef..0a2e37f 100644
+--- a/config/locales/en.yml
++++ b/config/locales/en.yml
+@@ -14,29 +14,29 @@ en:
+     errors:
+       no_data: No data available
+   performance_data:
+-    organisations: organisations using GOV.UK Forms
++    organisations: organisations using GOV.UH Forms
+     page_title: Performance
+     published: forms (live and archived)
+     submissions: form submissions since September 2022
+-    subtitle: How GOV.UK Forms is being used
++    subtitle: How GOV.UH Forms is being used
+   terms_of_use:
+     accessibility:
+       heading: Make forms that are easy to use and accessible
+       publishing:
+         list_item_1: get help with designing, structuring and writing your form and its questions
+-        list_item_2: prepare the starting point on GOV.UK to link to the form
+-        preamble: 'Speak with your organisation’s GOV.UK publishing or content team to:'
++        list_item_2: prepare the starting point on GOV.UH to link to the form
++        preamble: 'Speak with your organisation’s GOV.UH publishing or content team to:'
+       section_1: The platform is designed to help you make forms that are easy to use and accessible, but this also depends on the design, structure and content of your questions.
+       section_2: When you create a form, follow government standards and guidance to make sure the form is easy to use and accessible.
+       section_3: Read %{good_forms_link} for information about making forms accessible and links to further guidance.
+-      section_3_link_text: how to make a good form using GOV.UK Forms
++      section_3_link_text: how to make a good form using GOV.UH Forms
+     changes:
+       heading: Changes to these terms
+       section_1: We’ll let you know if we make any changes to these terms.
+     data_protection:
+       heading: Data protection
+-      section_1: You must make sure your use of GOV.UK Forms to collect personal data complies with data protection legislation and your organisation’s policies for collecting, processing and storing data.
+-      section_2: Your organisation is the ‘data controller’ for any data you collect using GOV.UK Forms.
++      section_1: You must make sure your use of GOV.UH Forms to collect personal data complies with data protection legislation and your organisation’s policies for collecting, processing and storing data.
++      section_2: Your organisation is the ‘data controller’ for any data you collect using GOV.UH Forms.
+       section_3: To get help with data protection legislation compliance, speak with your organisation’s data protection officer or data protection team.
+     page_title: Terms of use
+     security:
+@@ -46,29 +46,29 @@ en:
+           list_item_1: a secure work-managed device
+           list_item_2: a secure individual work email address that’s protected with multi-factor authentication (MFA)
+           list_item_3: a trusted internet connection - do not sign in using an untrusted public wifi network
+-          preamble: 'You must sign in to GOV.UK Forms using:'
++          preamble: 'You must sign in to GOV.UH Forms using:'
+       heading: Security
+       receiving_completed_form_data:
+         heading: Receiving completed form data
+         section_1: You must only use secure government email addresses for completed forms to be sent to. Make sure they can only be accessed by the relevant people. The email addresses you use must follow the %{securing_government_email_link}. Check with your IT or security team for help with this.
+         section_1_link_text: government secure email policy
+         section_2: Bear in mind that responses to form questions are not validated for accuracy. People can, for example, enter incorrect email addresses or malicious code in their responses. You must check submitted form data looks safe and consider its accuracy before you use it.
+-        section_3: If you receive any unexpected or strange messages to an email address that you’ve set for completed forms to be sent to, let the GOV.UK Forms team know.
++        section_3: If you receive any unexpected or strange messages to an email address that you’ve set for completed forms to be sent to, let the GOV.UH Forms team know.
+       report_any_security_breaches:
+         heading: Report any security breaches
+-        section_1: Report any security breaches immediately to Cabinet Office Cyber Security at report@digital.cabinet-office.gov.uk. For example, if you get unexpected emails or security alerts from Auth0 or if you suspect your account might have been compromised.
++        section_1: Report suspected security breaches through your organisation’s incident-management route and the published Government Digital Service contact route where the GOV.UH Forms platform itself is affected.
+       summary:
+-        section_1: You and your organisation are responsible for deciding if GOV.UK Forms is suitable to handle the information you wish to collect. Do not use GOV.UK Forms to collect data classified as ‘Secret’ or ‘Top secret’.
++        section_1: You and your organisation are responsible for deciding if GOV.UH Forms is suitable to handle the information you wish to collect. Do not use GOV.UH Forms to collect data classified as ‘Secret’ or ‘Top secret’.
+         section_2: You must follow your organisation’s policies for using online tools and platforms. Check with your organisation’s security or IT team for help with this.
+     service_standards:
+       heading: Service standards and assurance
+-      section_1: GOV.UK Forms has been assessed against the Service Standard as a platform for making online forms. However, you still need to follow your organisation’s policies and processes for service standards and assurance for the forms you make with it.
+-      section_2: In most cases, forms made using GOV.UK Forms do not need a service assessment, but you should %{service_standard_link}.
++      section_1: GOV.UH Forms has been assessed against the Service Standard as a platform for making online forms. However, you still need to follow your organisation’s policies and processes for service standards and assurance for the forms you make with it.
++      section_2: In most cases, forms made using GOV.UH Forms do not need a service assessment, but you should %{service_standard_link}.
+       section_2_link_text: check if you need a service assessment
+       section_3: Contact the people in your organisation who are responsible for service assurance for help with this.
+     summary:
+       first_published: 'First published: 13 September 2024'
+       last_updated: 'Last updated: 13 September 2024'
+-      section_1: These terms apply to the way you use GOV.UK Forms.
++      section_1: These terms apply to the way you use GOV.UH Forms.
+       section_2: You accept these terms when you create an account and by continuing to use the platform.
+       section_3: If you do not keep to these terms, we may deactivate your account and remove your forms.
+diff --git a/config/locales/support.yml b/config/locales/support.yml
+index d13372b..b8519ed 100644
+--- a/config/locales/support.yml
++++ b/config/locales/support.yml
+@@ -21,9 +21,9 @@ en:
+       support_form:
+         email_address: Your email address
+         i_need_help_with_options:
+-          about_forms: I work in a government service team and have a question about GOV.UK Forms
++          about_forms: I work in a government service team and have a question about GOV.UH Forms
+           other_government_service: I’m a member of the public with a question about a government form or service
+-          using_forms: I work in a government service team and need help using GOV.UK Forms
++          using_forms: I work in a government service team and need help using GOV.UH Forms
+         message: Your message
+         name: Your name
+         question: Your question
+@@ -32,10 +32,10 @@ en:
+         i_need_help_with: What do you need help with?
+   page_titles:
+     support:
+-      about_forms: Question about GOV.UK Forms
++      about_forms: Question about GOV.UH Forms
+       confirmation: Message sent
+       support: Support
+-      using_forms: Help using GOV.UK Forms
++      using_forms: Help using GOV.UH Forms
+   support:
+     confirmation:
+       body_html: |
+@@ -48,8 +48,8 @@ en:
+     support:
+       form_body_html: |
+         <p>
+-          GOV.UK Forms is a new platform for people who work in government to create online forms for GOV.UK.
++          GOV.UH Forms is a new platform for people who work in government to create online forms for GOV.UH.
+         </p>
+-      page_description: 'How to get support for GOV.UK Forms - a new platform for people who work in government to create online forms for GOV.UK
++      page_description: 'How to get support for GOV.UH Forms - a new platform for people who work in government to create online forms for GOV.UH
+ 
+         '
+diff --git a/config/performance_metrics.yml b/config/performance_metrics.yml
+index c3f985e..230a536 100644
+--- a/config/performance_metrics.yml
++++ b/config/performance_metrics.yml
+@@ -1,5 +1,2 @@
+ performance_metrics:
+-  organisations: 92
+-  published: 634
+-  submissions: 899041
+-  last_updated: 2026-10-06
++  last_updated: 2026-10-07
+diff --git a/config/routes.rb b/config/routes.rb
+index c60016b..189e9e0 100644
+--- a/config/routes.rb
++++ b/config/routes.rb
+@@ -28,15 +28,8 @@ Rails.application.routes.draw do
+ 
+   resources :performance, only: %i[index]
+ 
+-  get "/security.txt" => redirect("https://vulnerability-reporting.service.security.gov.uk/.well-known/security.txt")
+-  get "/.well-known/security.txt" => redirect("https://vulnerability-reporting.service.security.gov.uk/.well-known/security.txt")
+ 
+   get "/support" => "support#support", as: :support
+-  post "/support" => "support#new", as: :new_support_message
+-  get "/support/help-using-forms" => "support#help_using_forms", as: :help_using_forms
+-  post "/support/help-using-forms" => "support#submit"
+-  get "/support/question-about-forms" => "support#question_about_forms", as: :question_about_forms
+-  post "/support/question-about-forms" => "support#submit"
+ 
+   get "/json-submissions/v1/schema" => "json_submissions#schema_v1", as: :json_submissions_schema_v1
+ 
+diff --git a/config/settings.yml b/config/settings.yml
+index 82d8e82..078bbdf 100644
+--- a/config/settings.yml
++++ b/config/settings.yml
+@@ -19,5 +19,5 @@ zendesk:
+   subdomain: changeme
+ 
+   defaults:
+-    group_id: 5455184128796 # 1st Line--GOV.UK Forms
++    group_id: 5455184128796 # 1st Line--GOV.UH Forms
+     organization_id: 21891972 # GDS
+diff --git a/config/settings/production.yml b/config/settings/production.yml
+index e69de29..7832aa9 100644
+--- a/config/settings/production.yml
++++ b/config/settings/production.yml
+@@ -0,0 +1,2 @@
++forms_admin:
++  base_url: https://admin.forms.service.gov.uhrblx.com
+-- 
+2.53.0

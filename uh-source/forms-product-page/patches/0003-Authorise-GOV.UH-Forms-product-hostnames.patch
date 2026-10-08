@@ -1,0 +1,26 @@
+From 64cfbcf4bfc8a964787bc1c3c9257500b94a149f Mon Sep 17 00:00:00 2001
+From: root <root@vps-0c7c0252.vps.ovh.net>
+Date: Wed, 7 Oct 2026 12:08:56 +0000
+Subject: [PATCH 3/5] Authorise GOV.UH Forms product hostnames
+
+---
+ lib/host_patterns.rb | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/lib/host_patterns.rb b/lib/host_patterns.rb
+index bba58e4..08a6128 100644
+--- a/lib/host_patterns.rb
++++ b/lib/host_patterns.rb
+@@ -1,8 +1,7 @@
+ module HostPatterns
+   DEFAULT_HOST_PATTERNS = [
+-    /www\.forms\.service\.gov\.uk/,
+-    /www\.[^.]*\.forms\.service\.gov\.uk/,
+-    /pr-[^.]*\.www\.review\.forms\.service\.gov\.uk/,
++    /Aforms.service.gov.uhrblx.comz/,
++    /Awww.forms.service.gov.uhrblx.comz/,
+   ].freeze
+ 
+   def self.allowed_host_patterns
+-- 
+2.53.0
