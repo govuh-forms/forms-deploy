@@ -40,12 +40,12 @@ for (const url of urls) {
     // GOV.UK Frontend places the government logo and service product name
     // together in one header link. Require the reviewed service-specific
     // flex layout and gap, not a coincidental string elsewhere in a bundle.
-    const headerAligned = [...css.matchAll(/([^{}]+)\\{([^{}]*)\\}/g)].some((match) =>
+    const headerAligned = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].some((match) =>
       match[1].includes("govuk-header__homepage-link") &&
       match[1].includes("govuk-header__logo") &&
-      /display\\s*:\\s*inline-flex/.test(match[2]) &&
-      /align-items\\s*:\\s*center/.test(match[2]) &&
-      /column-gap\\s*:\\s*24px/.test(match[2])
+      /display\s*:\s*inline-flex/.test(match[2]) &&
+      /align-items\s*:\s*center/.test(match[2]) &&
+      /column-gap\s*:\s*24px/.test(match[2])
     );
     check(headerAligned, url + ": GOV.UH logo and Forms product name are not aligned in the native header");
     const p = css.lastIndexOf("uh-government-coat-of-arms.webp");
