@@ -5,7 +5,7 @@ if [[ $# != 1 ]]; then echo "Usage: $0 <disposable forms-product-page source che
 source_dir="$(realpath "$1")"
 here="$(dirname "$(realpath "$0")")"
 upstream_sha="806fc5bf1c363f25d77f0d0f6e3bb4a412df723d"
-expected_tree="6c5893e8e0d2bf5377d6b1679f015ba571833584"
+expected_tree="2d3aaf4ad249c9c5224e80ee8f5cadba13d7e646"
 [[ "$(git -C "$source_dir" rev-parse --is-inside-work-tree 2>/dev/null)" == "true" ]] || { echo "Expected a dedicated Git checkout" >&2; exit 1; }
 actual_sha="$(git -C "$source_dir" rev-parse HEAD)"
 [[ "$actual_sha" == "$upstream_sha" ]] || {
